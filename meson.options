@@ -6,3 +6,5 @@ option('with_tests', type: 'boolean', value: false, description: 'with unit test
 option('with_examples', type: 'boolean', value: false, description: 'with examples applications')
 option('config', type: 'string', description: 'Configuration file to use', yield: true)
 option('dts', type: 'string', description: 'Device tree file to use', yield: true)
+option('dts-include-dirs', type: 'array', yield: true,
+       description: 'Directories to add to resolution path for dtsi inclusion')

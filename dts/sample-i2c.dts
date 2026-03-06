@@ -1,0 +1,83 @@
+/*
+ * Copyright (c) 2023,Ledger SAS
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <st/u5/stm32u599.dtsi>
+#include <dt-bindings/pinctrl/stm32-pinctrl.h>
+#include <sentry.dtsi>
+
+&i2c1 {
+	status = "okay";
+	compatible = "st,stm32u5-i2c";
+	sentry,owner = <0xC001F002>;
+	i2c,hsifreq = <40>;
+    pinctrl-0 = <&i2c1_scl_pb8>, <&i2c1_sda_pb9>;
+};
+
+&exti {
+	events = <26>;
+	status = "okay";
+};
+
+&gpioa {
+	status = "okay";
+};
+
+&gpiob {
+	status = "okay";
+};
+
+&gpioc {
+	status = "okay";
+};
+
+&gpiod {
+	status = "okay";
+};
+
+&gpioe {
+	status = "okay";
+};
+
+&gpiof {
+	status = "okay";
+};
+
+&gpiog {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+	compatible = "st,stm32u5-i2c";
+    sentry,owner = <0xC001F002>;
+    i2c,hsifreq = <40>;
+    pinctrl-0 = <&i2c1_scl_pb8>, <&i2c1_sda_pb9>;
+};
+
+
+&pinctrl {
+    i2c1_scl_pb8: i2c_scl_pb8 {
+			label = "scl";
+            pinmux = <&gpiob 8 STM32_DT_PIN_MODE_ALTFUNC(4)>;
+            pincfg = <STM32_OTYPER_OPEN_DRAIN \
+                              STM32_OSPEEDR_VERY_HIGH_SPEED \
+                              STM32_PUPDR_PULL_UP>;
+    };
+
+    i2c1_sda_pb9: i2c_sda_pb9  {
+			label = "sda";
+            pinmux = <&gpiob 9 STM32_DT_PIN_MODE_ALTFUNC(4)>;
+            pincfg = <STM32_OTYPER_OPEN_DRAIN \
+                              STM32_OSPEEDR_VERY_HIGH_SPEED \
+                              STM32_PUPDR_PULL_UP>;
+    };
+};
+
+&syscfg {
+	status = "okay";
+};

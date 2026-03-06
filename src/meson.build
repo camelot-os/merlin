@@ -3,6 +3,8 @@
 
 merlin_sourceset = ssmod.source_set()
 
+subdir('buses')
+
 merlin_common_src = files(
     './platform/platform_driver.c',
 )

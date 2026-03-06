@@ -10,6 +10,15 @@
  * with such an external device (e.g. touchscreen, panel, battery and so on)
  */
 
+typedef enum device_type {
+	DEVICE_TYPE_I2C = 1,
+	DEVICE_TYPE_SPI = 2,
+	DEVICE_TYPE_USART = 3,
+	DEVICE_TYPE_CAN = 4,
+	DEVICE_TYPE_USB = 5,
+	DEVICE_TYPE_GPIO = 6,
+} device_type_t;
+
 /* probe for the existence and ownership of the given device handle */
 /**
  * Note: because self type varies depending on the driver family, the probe function is
@@ -51,6 +60,7 @@ struct platform_device_driver {
 	void * driver_fops;
 	/**< generic platform operations, common to all platform drivers */
 	struct platform_fops platform_fops;
+	device_type_t type;
 };
 
 /* platform level utility functions, that do not need driver-level implementation */

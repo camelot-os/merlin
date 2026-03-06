@@ -22,10 +22,22 @@ kconfig_proj = subproject('kconfig', default_options: ['kconfig=@0@'.format(kcon
 kconfig_h = kconfig_proj.get_variable('kconfig_h')
 kconfig_data = kconfig_proj.get_variable('kconfig_data')
 
+devicetree_proj = subproject('devicetree', default_options:['install=true'])
+dts_in = devicetree_proj.get_variable('devicetree_dts_in')
+dts = devicetree_proj.get_variable('devicetree_dtsd')
+dts2src = devicetree_proj.get_variable('dts2src')
+dtsgen = generator(dts2src,
+    arguments: ['-d', dts.full_path() , '-t', '@INPUT@', '@OUTPUT@' ],
+    depends: [ dts ],
+    output: '@BASENAME@',
+)
+
+
 global_build_args = [
     '-include', fs.parent(kconfig_h) / fs.name(kconfig_h),
 ]
 external_deps = []
+generated_private_headers = []
 
 #if meson.is_cross_build()
 #    libshield_proj = subproject('shield')
@@ -40,16 +52,23 @@ merlin_sourceset = ssmod.source_set()
 subdir('include')
 subdir('src')
 
-with_tests_opt = get_option('with_tests')
-if with_tests_opt
-    subdir('tests')
-endif
+#with_tests_opt = get_option('with_tests')
+#if with_tests_opt
+#    subdir('tests')
+#endif
+
+# for all generated headers generated in the src directory, we need to add them
+# as dependencies to the library target, otherwise the build system won't know about them
+# and won't trigger the generation when needed.
+merlin_private_headers_dep = declare_dependency(
+    sources: generated_private_headers,
+)
 
 merlin_lib = static_library(meson.project_name(),
     sources: merlin_sourceset_config,
     c_args: [ global_build_args ],
     include_directories: [ merlin_inc ],
-    dependencies: [ external_deps ],
+    dependencies: [ external_deps, merlin_private_headers_dep ],
 )
 
 merlin_dep = declare_dependency(
