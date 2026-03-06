@@ -7,7 +7,7 @@
 
 static int my_driver_xfer(struct platform_device_driver *self, uint8_t *rdbuf, uint8_t *wrbuf, size_t len) {
  	// [...]
- }
+}
 
 static int my_driver_probe(struct platform_device_driver *self, u32 label) {
  	self->devh = sys_get_handle(label)

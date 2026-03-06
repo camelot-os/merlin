@@ -1,7 +1,7 @@
 #ifndef MERLIN_SPI_H
 #define MERLIN_SPI_H
 
-#include <uapi/systypes.h>
+#include <types.h>
 #include <merlin/platform/driver.h>
 
 struct spi_driver;

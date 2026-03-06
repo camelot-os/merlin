@@ -1,1 +1,6 @@
 // TODO: here is the devices owned by the current task and declared in the DTS file
+
+
+Status merlin_platform_dts_get_baseaddr(struct platform_device_driver *self) {
+    return STATUS_NOENTRY;
+}

@@ -1,0 +1,7 @@
+menuconfig WITH_MERLIN
+    bool "enable Merlin device framework"
+
+if WITH_MERLIN
+
+endif
+
