@@ -2,6 +2,8 @@
 #define MERLIN_PLATFORM_H
 
 #include <types.h>
+#include <device.h>
+#include <handle.h>
 /*
  * generic platform device primitives that need to be defined for
  * all platform devices (Buses typically).
@@ -11,23 +13,14 @@
  */
 
 typedef enum device_type {
-	DEVICE_TYPE_I2C = 1,
-	DEVICE_TYPE_SPI = 2,
-	DEVICE_TYPE_USART = 3,
-	DEVICE_TYPE_CAN = 4,
-	DEVICE_TYPE_USB = 5,
-	DEVICE_TYPE_GPIO = 6,
+	DEVICE_TYPE_I2C = 1, /*< I2C bus controller */
+	DEVICE_TYPE_SPI = 2, /*< SPI bus controller */
+	DEVICE_TYPE_USART = 3, /*< USART bus controller */
+	DEVICE_TYPE_CAN = 4, /*< CAN bus controller */
+	DEVICE_TYPE_USB = 5, /*< USB bus controller */
+	DEVICE_TYPE_GPIO = 6, /*< bare GPIO device (led, button, etc.) */
 } device_type_t;
 
-/* probe for the existence and ownership of the given device handle */
-/**
- * Note: because self type varies depending on the driver family, the probe function is
- * defined as a generic one that only take the device label as argument, and return the
- * device handle if the device is found and owned by the current task, or 0 otherwise.
- * For each device type, this prototype definition override the void* using the corresponding
- * device-specific structure.
- */
-typedef int (*merlin_platform_probe_fn_t)(uint32_t label);
 /* initialize the given device */
 typedef int (*merlin_platform_init_fn_t)(void *self);
 /* release the given device */
@@ -36,7 +29,6 @@ typedef int (*merlin_platform_release_fn_t)(void *self);
 typedef int (*merlin_platform_isr_fn_t)(void *self, uint32_t IRQn);
 
 struct platform_fops {
-	merlin_platform_probe_fn_t    probe;
 	merlin_platform_init_fn_t     init;
 	merlin_platform_release_fn_t  release;
 	merlin_platform_isr_fn_t	  isr;
@@ -52,6 +44,7 @@ struct platform_device_driver {
 	/**< unique device handle associated to the device, forge at boot time */
 	devh_t 	  devh;
 	uint32_t  label;
+	const devinfo_t *devinfo; /**< device information retrieved from DTS, based on the label */
 	/**< device name for debug purpose */
 	const char * name;
 	/**< device compatible field declared in the bus driver, used at probe time */
@@ -65,6 +58,16 @@ struct platform_device_driver {
 
 /* platform level utility functions, that do not need driver-level implementation */
 
+/* probe for the existence and ownership of the given device handle */
+/**
+ * Note: because self type varies depending on the driver family, the probe function is
+ * defined as a generic one that only take the device label as argument, and return the
+ * device handle if the device is found and owned by the current task, or 0 otherwise.
+ * For each device type, this prototype definition override the void* using the corresponding
+ * device-specific structure.
+ */
+Status merlin_platform_driver_register(struct platform_device_driver *driver, uint32_t label);
+
 /* Map given device handle into the task memory */
 Status merlin_platform_driver_map(struct platform_device_driver *self);
 
@@ -75,5 +78,7 @@ Status merlin_platform_driver_unmap(struct platform_device_driver *self);
  * and call the fops->isr routine for it
  */
 Status merlin_platform_driver_irq_displatch(uint32_t IRQn);
+
+Status merlin_platform_driver_configure_gpio(struct platform_device_driver *self);
 
 #endif/*!MERLIN_PLATFORM_H*/

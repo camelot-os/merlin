@@ -6,4 +6,5 @@ merlin_inc = include_directories('.')
 merlin_headers = files(
     'merlin/platform/driver.h',
     'merlin/buses/spi.h',
+    'merlin/buses/i2c.h',
 )

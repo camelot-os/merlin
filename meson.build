@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2023 - 2025 H2Lab OSS Team
 # SPDX-License-Identifier: Apache-2.0 OR BSD-3-Clause
 
-project('libmerlin', 'c',
+project('merlin', 'c',
     meson_version: '>=1.7.0',
     version : run_command('support/meson/version.sh', 'get-vcs', check: true).stdout().strip(),
     default_options: [
@@ -73,20 +73,11 @@ merlin_lib = static_library(meson.project_name(),
 
 merlin_dep = declare_dependency(
     link_with: merlin_lib,
+    dependencies: [ external_deps ],
     include_directories: merlin_inc,
 )
 
 # about documentation building
-with_doc_opt = get_option('with_doc')
-if with_doc_opt
-    subdir('doc')
-endif
-
-with_tests_opt = get_option('with_tests')
-if with_tests_opt
-    subdir('tests')
-endif
-
 with_examples_opt = get_option('with_examples')
 if with_examples_opt
     subdir('examples')
