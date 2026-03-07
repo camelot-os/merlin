@@ -18,6 +18,7 @@
 
 {% set ns = namespace() -%}
 {% set ns.total_devices=0 -%}
+{% set ns.current_device_index=0 -%}
 
 {% set ns = namespace() -%}
 {% for device in dts.get_active_nodes() -%}
@@ -43,9 +44,11 @@ static const devinfo_t i2c_devices[] = {
     {% continue -%}
     {% endif -%}
     {% if "I2C" in "%s"|format(device.label.upper()) -%}
+    {% set ns.current_device_index = ns.total_devices -%}
     {% set ns.total_devices = ns.total_devices + 1 -%}
     {
-        .id = {{ "0x%xUL"|format(loop.index - 1) }},
+        {% set label = device['sentry,label'] -%}
+        .id = {{ "0x%xUL"|format(label) }},
         {% if device.reg -%}
         .baseaddr = {{ "0x%08x"|format(device.reg[0]) }},
         .size = {{ "0x%08x"|format(device.reg[1]) }},
@@ -79,23 +82,25 @@ static const devinfo_t i2c_devices[] = {
         .ios = {
             {% for io in [ 0,1,2,3,4,5,6,7] -%}
             {% if io < numio -%}
-            {% set io = device['pinctrl-0'][io] -%}
+            {% set iodata = device['pinctrl-0'][io] -%}
             {
                 {#
                  the GPIO port id is numeric here, using the same resolution
                  as the GPIO driver device tree forge (see stm32-gpio-dt.h for e.g.
                 -#}
                 {% set ns.io_gpio_port=0 -%}
+                /* FIXME: adding dts primitive in devicetree to get back 'gpio_controller' label to get gpios in a portbable way */
                 {% set gpio_ports = dts.get_compatible("st,stm32-gpio") -%}
                 {% for port in gpio_ports -%}
                 {% if port.status and port.status == "okay" -%}
-                {% if port.label == io.pinmux[0].label -%}
-                /* using port {{ port.label.upper() }} */
+                {% if port.label == iodata.pinmux[0].label -%}
+                #define {{ "%s"|format(iodata.id.upper()) }} (dev_io_t*)&i2c_devices[{{ ns.current_device_index }}].ios[{{ io }}]
+                /* using port {{ port.label.upper() }} for {{ iodata.id }} */
                 .port = {{ ns.io_gpio_port }},
                 {% endif -%}
                 {% set ns.io_gpio_port = ns.io_gpio_port + 1 -%}
                 {% endif -%}
-                {% endfor -%} .pin = {{ io.pinmux[1] }}, .mode = {{ io.pinmux[2] }}, .af = {{ io.pinmux[3] }}, .ppull =  {{ io.pincfg[0] }}, .speed =  {{ io.pincfg[1] }}, .pupdr =  {{ io.pincfg[2] }}, },
+                {% endfor -%} .pin = {{ iodata.pinmux[1] }}, .mode = {{ iodata.pinmux[2] }}, .af = {{ iodata.pinmux[3] }}, .ppull =  {{ iodata.pincfg[0] }}, .speed =  {{ iodata.pincfg[1] }}, .pupdr =  {{ iodata.pincfg[2] }}, },
             {% else -%}
             { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
             {% endif -%}
