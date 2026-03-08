@@ -1,3 +1,9 @@
+merlin_common_src += files(
+    'i2c.c',
+)
+merlin_private_headers += files(
+    'i2c.h',
+)
 
 i2c_dt_h_template = meson.current_source_dir() / 'i2c_dt.h.in'
 

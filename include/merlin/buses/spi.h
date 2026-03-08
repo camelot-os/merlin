@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 H2Lab Development Team
+
 #ifndef MERLIN_SPI_H
 #define MERLIN_SPI_H
 
