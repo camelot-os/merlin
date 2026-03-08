@@ -1,7 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 H2Lab Development Team
+
 menuconfig WITH_MERLIN
     bool "enable Merlin device framework"
 
 if WITH_MERLIN
 
 endif
-

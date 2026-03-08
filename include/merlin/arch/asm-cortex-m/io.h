@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 H2Lab Development Team
+
 /**
  * \file I/O manipulation primitive. should never be used directly, use <sentry/io.h instead
  *

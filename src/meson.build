@@ -1,5 +1,5 @@
-# SPDX-FileCopyrightText: 2023 - 2025 H2Lab OSS Team
-# SPDX-License-Identifier: Apache-2.0 OR BSD-3-Clause
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 H2Lab Development Team
 
 merlin_sourceset = ssmod.source_set()
 

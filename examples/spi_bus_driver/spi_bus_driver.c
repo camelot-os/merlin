@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 H2Lab Development Team
+
 /*
  * a typical SPI bus driver then needs only the following in its source code:
  */

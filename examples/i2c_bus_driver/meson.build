@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 H2Lab Development Team
+
 libdrvi2c = static_library('drvi2c',
     sources: [
         'i2c_bus_driver.c',
