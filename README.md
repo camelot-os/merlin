@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Copyright (c) 2026 H2Lab Development Team -->
+
 # Merlin driver framework for Camelot user drivers
 
 <img src="merlin.jpg" width="200">
@@ -15,7 +18,7 @@ Merlin is responsible for typical actions:
 ## Merlin architectural model
 
 All in-SoC devices are regrouped using the plaform interface of Merlin, declared in the `<merlin/platform/driver.h>`
-header. Various in-SoC devices such as buses are based on this interface for their declaration
+header. Various in-S devices such as buses are based on this interface for their declaration
 
 ## Examples
 
