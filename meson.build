@@ -82,3 +82,17 @@ with_examples_opt = get_option('with_examples')
 if with_examples_opt
     subdir('examples')
 endif
+
+with_doc_opt = get_option('with_doc')
+if with_doc_opt
+    subdir('doc')
+endif
+
+summary(
+    {
+        'examples': with_examples_opt,
+        'doc' : with_doc_opt,
+    },
+    bool_yn: true,
+    section: 'Targets',
+)
