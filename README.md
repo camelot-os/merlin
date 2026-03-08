@@ -3,7 +3,7 @@
 
 # Merlin driver framework for Camelot user drivers
 
-<img src="merlin.jpg" width="200">
+<img src="doc/concepts/_static/figures/merlin.png" width="200">
 
 ## Basics
 
