@@ -1,7 +1,20 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 H2Lab Development Team
+
+/*
+ * This file is an example of a I2C bus driver implementation based on the merlin platform.
+ * This driver is based on the STM32 I2C bus controller, but the same principles can be applied
+ * to any other I2C bus controller.
+ * The driver is implemented as a platform driver, which means that it is registered in the platform
+ * and can be probed and initialized by the hosting application.
+ * The driver license is BSD-3-Clause, which means that it can be used and modified freely, as
+ * long as the original copyright notice and disclaimer are retained.
+ */
 
 #include <inttypes.h>
 #include <stddef.h>
 #include <merlin/buses/i2c.h>
+#include <merlin/io.h>
 #include "i2c_bus_driver.h"
 
 /*
@@ -60,58 +73,67 @@ static struct platform_device_driver my_i2c_driver = {
 	.type = DEVICE_TYPE_I2C,
 };
 
-#define GET_REG_ADDR(offset) ((volatile uint32_t *)((my_i2c_driver.devinfo->baseaddr) + (offset)))
+#define GET_REG_ADDR(offset) ((my_i2c_driver.devinfo->baseaddr) + (offset))
 
 /** local utility I2C helper functions */
 static void i2c_bus_disable(void)
 {
-	volatile uint32_t *cr1 = GET_REG_ADDR(I2C_CR1_OFFSET);
-	*cr1 &= ~I2C_CR1_PE;
+	uint32_t cr1_val = merlin_ioread32(GET_REG_ADDR(I2C_CR1_OFFSET));
+	cr1_val &= ~I2C_CR1_PE;
+	merlin_iowrite32(GET_REG_ADDR(I2C_CR1_OFFSET), cr1_val);
 }
 
 static void i2c_bus_enable(void)
 {
-	volatile uint32_t *cr1 = GET_REG_ADDR(I2C_CR1_OFFSET);
-	*cr1 |= I2C_CR1_PE;
+	uint32_t cr1_val = merlin_ioread32(GET_REG_ADDR(I2C_CR1_OFFSET));
+	cr1_val |= I2C_CR1_PE;
+	merlin_iowrite32(GET_REG_ADDR(I2C_CR1_OFFSET), cr1_val);
 }
 
 static void i2c_bus_send_start(void)
 {
-	volatile uint32_t *cr1 = GET_REG_ADDR(I2C_CR1_OFFSET);
-	*cr1 |= I2C_CR1_START;
+	uint32_t cr1_val = merlin_ioread32(GET_REG_ADDR(I2C_CR1_OFFSET));
+	cr1_val |= I2C_CR1_START;
+	merlin_iowrite32(GET_REG_ADDR(I2C_CR1_OFFSET), cr1_val);
 }
 
 static void i2c_bus_send_stop(void)
 {
-	volatile uint32_t *cr1 = GET_REG_ADDR(I2C_CR1_OFFSET);
-	*cr1 |= I2C_CR1_STOP;
+	uint32_t cr1_val = merlin_ioread32(GET_REG_ADDR(I2C_CR1_OFFSET));
+	cr1_val |= I2C_CR1_STOP;
+	merlin_iowrite32(GET_REG_ADDR(I2C_CR1_OFFSET), cr1_val);
 }
 
 static void i2c_bus_send_ack(void)
 {
-	volatile uint32_t *cr1 = GET_REG_ADDR(I2C_CR1_OFFSET);
-	*cr1 |= I2C_CR1_ACK;
+	uint32_t cr1_val = merlin_ioread32(GET_REG_ADDR(I2C_CR1_OFFSET));
+	cr1_val |= I2C_CR1_ACK;
+	merlin_iowrite32(GET_REG_ADDR(I2C_CR1_OFFSET), cr1_val);
 }
 
 static void i2c_bus_send_nack(void)
 {
-	volatile uint32_t *cr1 = GET_REG_ADDR(I2C_CR1_OFFSET);
-	*cr1 &= ~I2C_CR1_ACK;
+	uint32_t cr1_val = merlin_ioread32(GET_REG_ADDR(I2C_CR1_OFFSET));
+	cr1_val &= ~I2C_CR1_ACK;
+	merlin_iowrite32(GET_REG_ADDR(I2C_CR1_OFFSET), cr1_val);
 }
 
 static void i2c_bus_wait_for_sb(void)
 {
-	volatile uint32_t *sr1 = GET_REG_ADDR(I2C_SR1_OFFSET);
-	while (!(*sr1 & I2C_SR1_SB)) {
-		/* wait for start bit to be set */
-	}
+	/* waiting for sb bit to be set */
+	merlin_iopoll32_until_clear(
+		GET_REG_ADDR(I2C_SR1_OFFSET),
+		I2C_SR1_SB,
+		1000
+	);
 }
 
 void i2c_bus_set_prescaler(uint32_t freq)
 {
-	volatile uint32_t *cr2 = GET_REG_ADDR(I2C_CR2_OFFSET);
-	*cr2 &= ~I2C_CR2_FREQ_MASK;
-	*cr2 |= (freq & I2C_CR2_FREQ_MASK);
+	uint32_t cr2 = merlin_ioread32(GET_REG_ADDR(I2C_CR2_OFFSET));
+	cr2 &= ~I2C_CR2_FREQ_MASK;
+	cr2 |= (freq & I2C_CR2_FREQ_MASK);
+	merlin_iowrite32(GET_REG_ADDR(I2C_CR2_OFFSET), cr2);
 }
 
 /* I2C driver exported API implementations */

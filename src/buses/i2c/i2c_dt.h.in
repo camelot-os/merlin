@@ -1,4 +1,7 @@
 
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 H2Lab Development Team
+
 #ifndef I2C_DT_H
 #define I2C_DT_H
 
@@ -6,7 +9,6 @@
 #include <stddef.h>
 #include <device.h>
 
-/* --- Convenience macros -------------------------------------------------- */
 {% macro device_get_hsifreq(device) -%}
 {% if device["i2c,hsifreq"] -%}
 {{ "0x%x"|format(device["i2c,hsifreq"]) }}

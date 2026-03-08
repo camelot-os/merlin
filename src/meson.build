@@ -3,11 +3,11 @@
 
 merlin_sourceset = ssmod.source_set()
 
-subdir('buses')
+merlin_private_headers = []
+merlin_common_src = []
 
-merlin_common_src = files(
-    './platform/platform_driver.c',
-)
+subdir('buses')
+subdir('platform')
 
 merlin_sourceset.add(merlin_common_src)
 merlin_sourceset_config = merlin_sourceset.apply(kconfig_data, strict: false).sources()

@@ -1,4 +1,4 @@
-libi2c = static_library('i2c',
+libdrvi2c = static_library('drvi2c',
     sources: [
         'i2c_bus_driver.c',
     ],
@@ -6,7 +6,7 @@ libi2c = static_library('i2c',
     dependencies: [ merlin_dep ],
 )
 
-i2c_dep = declare_dependency(
-    link_with: libi2c,
+drvi2c_dep = declare_dependency(
+    link_with: libdrvi2c,
     include_directories: include_directories('.'),
 )

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 H2Lab Development Team
+
 #ifndef MY_I2C_BUS_DRIVER_H
 #define MY_I2C_BUS_DRIVER_H
 

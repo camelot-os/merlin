@@ -1,10 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 H2Lab Development Team
+
 #include <types.h>
 #include <handle.h>
 #include <uapi.h>
 #include <merlin/platform/driver.h>
+#include <merlin/helpers.h>
 #include "../buses/i2c/i2c.h"
 #include "dts.h"
-#include "../helper.h"
 
 static struct platform_device_driver *merlin_platform_get_from_handle(devh_t handle)
 {
