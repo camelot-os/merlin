@@ -9,6 +9,10 @@
 #include "../buses/i2c/i2c.h"
 #include "dts.h"
 
+/* Note that Sentry tasks are monothreaded and thus do not require locks or concurrency check ath Merlin level */
+static struct platform_device_driver *registered_drivers[CONFIG_MAX_REGISTERED_DRIVERS];
+static size_t num_registered_drivers = 0;
+
 static struct platform_device_driver *merlin_platform_get_from_handle(devh_t handle)
 {
     /* define a merlin-level platform drivers listing context to search in */
@@ -59,6 +63,9 @@ Status merlin_platform_driver_register(struct platform_device_driver *driver, ui
     if (unlikely(driver == NULL)) {
         return STATUS_INVALID;
     }
+    if (unlikely(num_registered_drivers >= CONFIG_MAX_REGISTERED_DRIVERS)) {
+        return STATUS_BUSY;
+    }
     switch (driver->type) {
         case DEVICE_TYPE_I2C:
             if (unlikely(merlin_platform_dts_i2c_get_devinfo(label, &devinfo) != STATUS_OK)) {
@@ -78,6 +85,8 @@ Status merlin_platform_driver_register(struct platform_device_driver *driver, ui
     }
     copy_from_kernel((uint8_t*)&driver->devh, sizeof(devh_t));
 
+    registered_drivers[num_registered_drivers] = driver;
+    num_registered_drivers++;
     driver->devinfo = devinfo;
 
     return STATUS_OK;
