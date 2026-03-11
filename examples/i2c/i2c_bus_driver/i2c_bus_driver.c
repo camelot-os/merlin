@@ -74,23 +74,21 @@
 #define I2C_TIMINGR_FM_400K 0x10700B1CUL
 #define I2C_TIMINGR_FMP_1M 0x00602173UL
 
-
-/* declare my own implementation of standard i2c fops */
-static struct i2c_bus_fops my_i2c_specific_fops = {
- 	   .write7 = NULL,
-	   .read7 = NULL,
-	   .write10 = NULL,
-	   .read10 = NULL,
-};
-
 /* declare my own implementation of standard i2c driver as a platform driver */
 static struct platform_device_driver my_i2c_driver = {
  	.label = 0x0UL, /*< to be updated by driver probe */
     .devh = 0, // to be updated by driver probe
 	.name = "my I2C bus controller driver for STM32U5A5",
 	.compatible = "st,stm32u5-i2c", /*< maybe a table instead, like Linux */
- 	.driver_fops = (void*)(&my_i2c_specific_fops),
-	/* platform deiver generic fops, not I2C specific */
+	.devinfo = NULL, /*< to be updated by driver probe */
+	/*
+	 * platform deiver generic fops, not I2C specific
+	 * Note that the I2C bus driver by default do not declare an ISR, as this ISR
+	 * is the consequence of the device interrupt configuration in the device tree,
+	 * and is not directly related to the bus driver itself.
+	 * This is why this field is to be fulfilled by the device driver using
+	 * merlin_platform_driver_register_i2c_peripheral() API, and not by the bus driver probe routine.
+	 */
     .platform_fops = {
         .isr = NULL,
  	},
@@ -417,7 +415,7 @@ end:
 	return res;
 }
 
-static void stm32_i2c_bus_acknowledge_irq(void)
+static void stm32_i2c_bus_acknowledge_irq(uint32_t IRQn)
 {
 	uint32_t isr_val = merlin_ioread32(GET_REG_ADDR(I2C_ISR_OFFSET));
 	uint32_t clear_flags = 0;
@@ -441,6 +439,9 @@ static void stm32_i2c_bus_acknowledge_irq(void)
 	if (clear_flags != 0U) {
 		stm32_i2c_bus_clear_flags(clear_flags);
 	}
+	/* Now that ISR handling for this device is complete, acknowledge the IRQ */
+	merlin_platform_acknowledge_irq(&my_i2c_driver, IRQn);
+
 }
 
 
@@ -553,5 +554,5 @@ int i2c_bus_read7(uint8_t slave_addr, uint8_t reg_addr,
 	uint8_t *data, size_t length) __attribute__((alias("stm32_i2c_bus_read7")));
 int i2c_bus_read10(uint16_t slave_addr, uint8_t reg_addr,
 	uint8_t *data, size_t length) __attribute__((alias("stm32_i2c_bus_read10")));
-void i2c_bus_acknowledge_irq(void) __attribute__((alias("stm32_i2c_bus_acknowledge_irq")));
+void i2c_bus_acknowledge_irq(uint32_t IRQn) __attribute__((alias("stm32_i2c_bus_acknowledge_irq")));
 int i2c_driver_release(void) __attribute__((alias("stm32_i2c_driver_release")));

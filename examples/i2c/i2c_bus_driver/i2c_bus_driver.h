@@ -153,13 +153,19 @@ int i2c_bus_read10(uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t 
 int i2c_bus_write10(uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length);
 
 /**
- * @brief acknowledge an I2C bus interrupt
+ * @brief acknowledge an I2C bus controller interrupt
  *
  * This function is used to acknowledge an interrupt from the I2C bus controller, by reading the appropriate
  * status registers. This is typically called in the I2C bus interrupt service routine, to
  * acknowledge the interrupt and allow the controller to process the next events.
+ *
+ * This IRQ is linked to the controller itself, not to a given I2C device that hold its own, dedicated
+ * IRQ line through usual GPIO-based interrupt.
+ *
+ * @see the ili2130_driver.c example for a typical device IRQ handler that call this function to acknowledge
+ * the I2C bus controller IRQ, and then process the device-specific events.
  */
-void i2c_bus_acknowledge_irq(void);
+void i2c_bus_acknowledge_irq(uint32_t IRQn);
 
 /**
  * @brief release the I2C bus controller.

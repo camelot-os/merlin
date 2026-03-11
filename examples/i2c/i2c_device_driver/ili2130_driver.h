@@ -15,8 +15,9 @@ struct touch_informations {
     uint8_t touch_id;
 };
 
-int ilitech_2130_i2c_init(enum i2c_speeds speed, enum i2c_address_mode mode);
-int ilitech_2130_isr(int IRQn);
+int ilitech_2130_probe(void);
+int ilitech_2130_init(void);
+int ilitech_2130_isr(void *self, uint32_t IRQn);
 int ilitech_2130_sleep(void);
 int ilitech_2130_wake(void);
 int ilitech_2130_get_last_touch_info(struct touch_informations *touch_info);

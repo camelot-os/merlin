@@ -120,6 +120,8 @@ Status merlin_platform_driver_unmap(struct platform_device_driver *self);
  */
 Status merlin_platform_driver_irq_displatch(uint32_t IRQn);
 
+Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn);
+
 /**
  * @brief configure the driver's target device associted GPIO, when there are some
  *

@@ -112,3 +112,14 @@ Status merlin_platform_driver_configure_gpio(struct platform_device_driver *self
 end:
     return status;
 }
+
+Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn)
+{
+    Status res = STATUS_NO_ENTITY;
+    for (size_t i = 0; i < self->devinfo->num_interrupt; i++) {
+        if (self->devinfo->its[i].it_num == IRQn) {
+            res = __sys_irq_acknowledge(self->devinfo->its[i].it_num);
+        }
+    }
+    return res;
+}
