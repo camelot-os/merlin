@@ -21,11 +21,9 @@ struct spi_bus_fops {
 
 /* structure that declare a SPI Bus driver, which is a platform driver */
 struct spi_driver {
-	/**< SPI sprcific fops, see above */
-	struct spi_bus_fops * fops;
-	/**< platform-generic fops */
-	struct platform_device * platform_fops;
-	void *private_data;
+	struct spi_bus_fops * fops;             /**< SPI specific fops, see above */
+	struct platform_device * platform_fops; /**< platform-generic fops */
+	void *private_data;                     /**< private data for the driver, if needed */
 };
 
 

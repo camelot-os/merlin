@@ -16,12 +16,12 @@
  */
 
 typedef enum device_type {
-	DEVICE_TYPE_I2C = 1, /*< I2C bus controller */
-	DEVICE_TYPE_SPI = 2, /*< SPI bus controller */
-	DEVICE_TYPE_USART = 3, /*< USART bus controller */
-	DEVICE_TYPE_CAN = 4, /*< CAN bus controller */
-	DEVICE_TYPE_USB = 5, /*< USB bus controller */
-	DEVICE_TYPE_GPIO = 6, /*< bare GPIO device (led, button, etc.) */
+	DEVICE_TYPE_I2C   = 1,   /**< I2C bus controller */
+	DEVICE_TYPE_SPI   = 2,   /**< SPI bus controller */
+	DEVICE_TYPE_USART = 3,   /**< USART bus controller */
+	DEVICE_TYPE_CAN   = 4,   /**< CAN bus controller */
+	DEVICE_TYPE_USB   = 5,   /**< USB bus controller */
+	DEVICE_TYPE_GPIO  = 6,   /**< bare GPIO device (led, button, etc.) */
 } device_type_t;
 
 /* initialize the given device */
@@ -31,10 +31,13 @@ typedef int (*merlin_platform_release_fn_t)(void *self);
 /* ISR triggered when an IRQn associated to the device is received */
 typedef int (*merlin_platform_isr_fn_t)(void *self, uint32_t IRQn);
 
+/**
+ * @brief platform device driver structure definition
+ */
 struct platform_fops {
-	merlin_platform_init_fn_t     init;
-	merlin_platform_release_fn_t  release;
-	merlin_platform_isr_fn_t	  isr;
+	merlin_platform_init_fn_t     init;    /**< initialization function */
+	merlin_platform_release_fn_t  release; /**< release function */
+	merlin_platform_isr_fn_t	  isr;     /**< interrupt service routine */
 };
 
 /**
@@ -45,22 +48,14 @@ struct platform_fops {
  *
  */
 struct platform_device_driver {
-	/**< unique device handle associated to the device, forge at boot time */
-	devh_t 	  devh;
-	/**< device label as set in the dts file using sentry,label attribute */
-	uint32_t  label;
-	/**< device information retrieved from DTS, based on the label */
-	const devinfo_t *devinfo;
-	/**< device name for debug purpose */
-	const char * name;
-	/**< device compatible field declared in the bus driver, used at probe time */
-	const char * compatible;
-	/**< per driver-type fops vary depending on the driver family */
-	void * driver_fops;
-	/**< generic platform operations, common to all platform drivers */
-	struct platform_fops platform_fops;
-	/**< device type, that allows to discriminates the way merlin interact with the dts backend */
-	device_type_t type;
+	devh_t 	  devh;	 /**< unique device handle associated to the device, forge at boot time */
+	uint32_t  label; /**< device label as set in the dts file using sentry,label attribute */
+	const devinfo_t *devinfo; /**< device information retrieved from DTS, based on the label */
+	const char * name; /**< device name for debug purpose */
+	const char * compatible; /**< device compatible field declared in the bus driver, used at probe time */
+	void * driver_fops; /**< per driver-type fops vary depending on the driver family */
+	struct platform_fops platform_fops; /**< generic platform operations, common to all platform drivers */
+	device_type_t type; /**< device type, that allows to discriminates the way merlin interact with the dts backend */
 };
 
 /* platform level utility functions, that do not need driver-level implementation */

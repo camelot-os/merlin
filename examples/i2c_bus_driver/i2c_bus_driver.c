@@ -139,13 +139,14 @@ void i2c_bus_set_prescaler(uint32_t freq)
 /* I2C driver exported API implementations */
 
 /**
- * \brief probe routine for my i2c driver, which will be called by the hosting application
+ * @brief probe routine for my i2c driver, which will be called by the hosting application
  *
  * This probe routine call merlin platform_driver_register() to register the driver in the platform,
  * verify that the corresponding device exists and is owned by the current task, and fulfill
  * all not yet configured fields of my driver declaration based on merlin platform driver API and DTS backend.
  *
- * \return 0 if the driver is successfully registered, or a negative error code otherwise.
+ * @param label device label as set in the dts using sentry,label attribute
+ * @return 0 if the driver is successfully registered, or a negative error code otherwise.
  */
 static int stm32_i2c_driver_probe(uint32_t label)
 {
@@ -156,9 +157,14 @@ static int stm32_i2c_driver_probe(uint32_t label)
 }
 
 /**
- * \brief init routine for my i2c driver, which will be called by the hosting application
+ * @brief init routine for my i2c driver, which will be called by the hosting application
+ *
  * This routine initialize the I2C bus controller so that it is ready to execute I2C transactions.
  * This routine is called after the probe routine.
+ *
+ * @param speed   requested I2C bus speed
+ * @param mode    addressing mode (7-bit or 10-bit)
+ * @return 0 on success, negative error code otherwise
  */
 static int stm32_i2c_driver_init(enum i2c_speeds speed, enum i2c_address_modes mode)
 {
@@ -174,8 +180,8 @@ static int stm32_i2c_driver_init(enum i2c_speeds speed, enum i2c_address_modes m
 	/* configure GPIOs for SCL and SDA lines */
 	merlin_platform_driver_configure_gpio(&my_i2c_driver);
 	/* configure prescaler for needed frequency */
-	/** TODO: Implement proper frequency calculation based on APB clock.
-	 * This should be something that can be get back from the DTS fields, through merlin
+	/** @todo Implement proper frequency calculation based on APB clock.
+	 * This should be something that can be get back from the DTS fields, through merlin.
 	 */
 	switch (speed) {
 		case I2C_SPEED_SM_100K:
