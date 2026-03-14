@@ -62,5 +62,4 @@ jobs:
               -Ddts-include-dirs="${DTS_INCLUDE_DIR}" \
               -Dwith_examples=true \
               "${{ matrix.build_dir }}"
-            ninja -C "${{ matrix.build_dir }}"
-            '
+            ninja -C "${{ matrix.build_dir }}"'
