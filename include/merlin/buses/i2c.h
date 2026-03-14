@@ -16,24 +16,25 @@ typedef int	(*i2c_read_reg7_fn_t)(struct i2c_driver *self, uint8_t *rdbuf, size_
 typedef int	(*i2c_write_reg10_fn_t)(struct i2c_driver *self, uint8_t *wrbuf, size_t len);
 typedef int	(*i2c_read_reg10_fn_t)(struct i2c_driver *self, uint8_t *rdbuf, size_t len);
 
-/*
- * I2C specific fops, which is, for I2C, only xfer(). This function
- * needs to be implemented in the SPI driver and declared
+/**
+ * @brief I2C specific fops definition
+ *
+ * This function needs to be implemented in the SPI driver and declared
  */
 struct i2c_bus_fops {
-	i2c_write_reg7_fn_t write7;
-	i2c_read_reg7_fn_t read7;
-	i2c_write_reg10_fn_t write10;
-	i2c_read_reg10_fn_t read10;
+	i2c_write_reg7_fn_t write7;    /**< write function for 7-bit register address */
+	i2c_read_reg7_fn_t read7;      /**< read function for 7-bit register address */
+	i2c_write_reg10_fn_t write10;  /**< write function for 10-bit register address */
+	i2c_read_reg10_fn_t read10;    /**< read function for 10-bit register address */
 };
 
-/* structure that declare a I2C Bus driver, which is a type of platform driver */
+/**
+ * @brief that declare a I2C Bus driver, which is a type of platform driver
+ */
 struct i2c_driver {
-	/**< I2C specific fops, see above */
-	struct i2c_bus_fops * fops;
-	/**< platform-generic fops */
-	struct platform_device * platform_fops;
-	void *private_data;
+	struct i2c_bus_fops * fops;             /**< I2C specific fops, see above */
+	struct platform_device * platform_fops; /**< platform-generic fops */
+	void *private_data;                     /**< private data for the driver, if needed */
 };
 
 

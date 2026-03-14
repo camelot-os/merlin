@@ -163,6 +163,7 @@ static inline uint32_t merlin_ioread32(size_t addr)
  * @return STATUS_OK if all bits are set, STATUS_BUSY if nretry is reached
  * without bitfield equality.
  */
+__attribute__((always_inline))
 static inline Status merlin_iopoll32_until_set(size_t addr, uint32_t bitmask, uint32_t nretry)
 {
     Status status = STATUS_OK;
@@ -190,6 +191,7 @@ static inline Status merlin_iopoll32_until_set(size_t addr, uint32_t bitmask, ui
  * @return STATUS_OK if all bits are cleared, STATUS_BUSY if nretry is reached
  * without bitfield equality.
  */
+__attribute__((always_inline))
 static inline Status merlin_iopoll32_until_clear(size_t addr, uint32_t bitmask, uint32_t nretry)
 {
     Status status = STATUS_OK;

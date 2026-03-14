@@ -11,9 +11,9 @@
  * By now, the first bit specify the message direction (RD or WR)
  */
 typedef enum i2c_msg_flags {
-    I2C_MSG_FLAG_WR      = 0x1, /*< write data */
-    I2C_MSG_FLAG_RD      = 0x2, /*< read data */
-    I2C_MSG_FLAG_RCV_LEN = 0x4  /*< data read len is received in first byte */
+    I2C_MSG_FLAG_WR      = 0x1, /**< write data */
+    I2C_MSG_FLAG_RD      = 0x2, /**< read data */
+    I2C_MSG_FLAG_RCV_LEN = 0x4  /**< data read len is received in first byte */
 } i2c_msg_flags_t;
 
 /*
@@ -24,10 +24,10 @@ typedef enum i2c_msg_flags {
  * dynamic len or not)) and the message buffer.
  */
 typedef struct i2c_msg {
-    uint8_t         addr;  /*< target slave address (7bits addr only) */
-    i2c_msg_flags_t flags; /*< transfer mode */
-    uint16_t        len; /*< bytes to read, if I2C_MSG_FLAG_RCV_LEN, buf max size */
-    uint8_t*        buf; /*< buffer to emit (WR)/to fulfill (RD) */
+    uint8_t         addr;  /**< target slave address (7bits addr only) */
+    i2c_msg_flags_t flags; /**< transfer mode */
+    uint16_t        len;   /**< bytes to read, if I2C_MSG_FLAG_RCV_LEN, buf max size */
+    uint8_t*        buf;   /**< buffer to emit (WR)/to fulfill (RD) */
 } i2c_msg_t;
 
 
@@ -48,7 +48,7 @@ enum i2c_address_modes {
 
 
 /**
- * \brief probe routine for my i2c driver, which will be called by the hosting application
+ * @brief probe routine for my i2c driver, which will be called by the hosting application
  *
  * The device is probed based on the DTS label which uniquely identify it.
  * This is the lonely application level information that need to be provided,
@@ -56,21 +56,32 @@ enum i2c_address_modes {
  * merlin framework.
  * Note that this function do not map, neither initialize the device, but only register
  * it in the platform.
+ *
+ * @param label device label as set in the dts using sentry,label attribute
+ * @return 0 on success, negative error code otherwise
  */
 int i2c_driver_probe(uint32_t label);
 
 /**
- * \brief initialize the I2C bus c ontroller.
+ * @brief initialize the I2C bus controller.
+ *
  * This routine map the device in the application memory, and configure the
  * i2c bus controller to be ready to execute I2C transactions.
  * This also include the GPIO configuration for SCL and SDA lines to be set.
+ *
+ * @param speed   requested I2C bus speed
+ * @param mode    addressing mode (7-bit or 10-bit)
+ * @return 0 on success, negative error code otherwise
  */
 int i2c_driver_init(enum i2c_speeds speed, enum i2c_address_modes mode);
 
 /**
- * \brief release the I2C bus controller.
+ * @brief release the I2C bus controller.
+ *
  * This routine unmap the device from the application memory, and do any other
  * clean up operation if needed.
+ *
+ * @return 0 on success, negative error code otherwise
  */
 int i2c_driver_release(void);
 

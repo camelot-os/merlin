@@ -2,9 +2,10 @@
 // Copyright (c) 2026 H2Lab Development Team
 
 /**
- * \file I/O manipulation primitive. should never be used directly, use <sentry/io.h instead
+ * @file io.h
+ * @brief I/O manipulation primitives. Should never be used directly, use <merlin/io.h> instead.
  *
- * NOTE: in Frama-C mode, these API is not traversed as it contains only ASM
+ * @note In Frama-C mode, this API is not traversed as it contains only ASM.
  */
 
 #ifndef __MERLIN_ASM_IO_H

@@ -12,6 +12,13 @@ jobs:
   build:
     name: Build (${{ matrix.sdk_name }})
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/camelot-os/camelot-builder-sdk:nightly
+    env:
+      SDK_ROOT: ${{ matrix.sdk_root }}
+      PKG_CONFIG_PATH: ${{ matrix.sdk_root }}/lib/pkgconfig
+      PKG_CONFIG_FILE: ${{ matrix.sdk_root }}/lib/pkgconfig
+      DTS_INCLUDE_DIR: ${{ matrix.sdk_root }}/share/dts
     strategy:
       fail-fast: false
       matrix:
@@ -39,28 +46,19 @@ jobs:
           git clone --depth 1 --branch main https://github.com/camelot-os/meson-cross-files.git "${{ matrix.cross_files_dir }}"
         shell: bash
       - name: Validation build
-        uses: docker://ghcr.io/camelot-os/camelot-builder-sdk:nightly
-        env:
-          SDK_ROOT: ${{ matrix.sdk_root }}
-          PKG_CONFIG_PATH: ${{ matrix.sdk_root }}/lib/pkgconfig
-          PKG_CONFIG_FILE: ${{ matrix.sdk_root }}/lib/pkgconfig
-          DTS_INCLUDE_DIR: ${{ matrix.sdk_root }}/share/dts
-        with:
-          entrypoint: /bin/bash
-          args: |-
-            -lc '
-            set -euo pipefail
-            cd "${GITHUB_WORKSPACE}"
-            git config --global --add safe.directory "*"
-            rm -rf "${{ matrix.build_dir }}"
-            ln -sfn /opt/arm/arm-none-eabi arm-none-eabi
-            echo "Using SDK_ROOT=${SDK_ROOT}"
-            echo "Using PKG_CONFIG_PATH=${PKG_CONFIG_PATH}"
-            meson setup --cross-file "${GITHUB_WORKSPACE}/${{ matrix.cross_files_dir }}/${{ matrix.cross_file }}" \
-              -Dconfig=configs/sample.config \
-              -Ddts=dts/sample-i2c.dts \
-              -Ddts-include-dirs="${DTS_INCLUDE_DIR}" \
-              -Dwith_examples=true \
-              "${{ matrix.build_dir }}"
-            ninja -C "${{ matrix.build_dir }}"
-            '
+        run: |
+          set -euo pipefail
+          cd "${GITHUB_WORKSPACE}"
+          git config --global --add safe.directory "*"
+          rm -rf "${{ matrix.build_dir }}"
+          ln -sfn /opt/arm/arm-none-eabi arm-none-eabi
+          echo "Using SDK_ROOT=${SDK_ROOT}"
+          echo "Using PKG_CONFIG_PATH=${PKG_CONFIG_PATH}"
+          meson setup --cross-file "${GITHUB_WORKSPACE}/${{ matrix.cross_files_dir }}/${{ matrix.cross_file }}" \
+            -Dconfig=configs/sample.config \
+            -Ddts=dts/sample-i2c.dts \
+            -Ddts-include-dirs="${DTS_INCLUDE_DIR}" \
+            -Dwith_examples=true \
+            "${{ matrix.build_dir }}"
+          ninja -C "${{ matrix.build_dir }}"
+        shell: bash

@@ -6,8 +6,6 @@
 
 #ifndef unlikely
 /**
- * @def unlikely
- *
  * @brief Mark a condition as unlikely to be true
  *
  * This implementation uses the GCC built-in function __builtin_expect
