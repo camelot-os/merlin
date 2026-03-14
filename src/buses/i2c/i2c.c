@@ -29,11 +29,13 @@ Status merlin_platform_dts_i2c_get_irqs(struct platform_device_driver *drv)
 Status merlin_platform_dts_i2c_get_devinfo(uint32_t devlabel, const devinfo_t **devinfo)
 {
     Status status = STATUS_NO_ENTITY;
+#if DEV_ID_I2C_MAX > 0
     for (size_t i = 0; i < DEV_ID_I2C_MAX; i++) {
         if (i2c_devices[i].id == devlabel) {
             *devinfo = &i2c_devices[i];
             status = STATUS_OK;
         }
     }
+#endif
     return status;
 }
