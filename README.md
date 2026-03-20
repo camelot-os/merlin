@@ -22,4 +22,11 @@ header. Various in-S devices such as buses are based on this interface for their
 
 ## Examples
 
-A sample SPI driver is defined in the `examples` directory to show typical way to use Merlin.
+Merlin repository hold some examples drivers to show how to use the Merlin driver framework is concrete cases.
+
+### I2C drivers examples
+
+Merlin delivers two typical drivers implementations based on Merlin driver framework API
+
+   * A typical STM32 I2C bus controller driver for I2C v2 controller such as in U5A5 STM32 subfamily
+   * A typical I2C slave driver using the above i2c bus API, for ILI2130 Touch screen

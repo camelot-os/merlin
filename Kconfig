@@ -6,4 +6,9 @@ menuconfig WITH_MERLIN
 
 if WITH_MERLIN
 
+config MAX_REGISTERED_DRIVERS
+    int "maximum number of device drivers that can be registered"
+    range 0 8
+    default 4
+
 endif

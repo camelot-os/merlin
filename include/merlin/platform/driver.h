@@ -21,22 +21,26 @@ typedef enum device_type {
 	DEVICE_TYPE_USART = 3,   /**< USART bus controller */
 	DEVICE_TYPE_CAN   = 4,   /**< CAN bus controller */
 	DEVICE_TYPE_USB   = 5,   /**< USB bus controller */
-	DEVICE_TYPE_GPIO  = 6,   /**< bare GPIO device (led, button, etc.) */
+	DEVICE_TYPE_EXT   = 6,   /**< external device (led, button, I2C slave, etc.) */
 } device_type_t;
 
-/* initialize the given device */
-typedef int (*merlin_platform_init_fn_t)(void *self);
-/* release the given device */
-typedef int (*merlin_platform_release_fn_t)(void *self);
 /* ISR triggered when an IRQn associated to the device is received */
 typedef int (*merlin_platform_isr_fn_t)(void *self, uint32_t IRQn);
 
 /**
- * @brief platform device driver structure definition
+ * @brief device driver ISR handle to be called when device IRQ event is received
+ *
+ * Merlin only needs to know, for each device driver, the ISR routine to call based on the device
+ * associated IRQ as defined in the device tree.
+ * The goal here is that whenever an IRQ event is received by the task waiting point (see Sentry wait_for_event() API),
+ * the task can directly call merlin_platform_driver_irq_displatch(IRQn), which will call the coresponding device
+ * driver ISR.
+ *
+ * All other platform devices interfaces (such as usual send, receive, emit, init, probe and so on) do not
+ * need to be wrapped over merlin calls, leaving to the task te responsibility of using them through the
+ * device driver API.
  */
 struct platform_fops {
-	merlin_platform_init_fn_t     init;    /**< initialization function */
-	merlin_platform_release_fn_t  release; /**< release function */
 	merlin_platform_isr_fn_t	  isr;     /**< interrupt service routine */
 };
 
@@ -116,6 +120,8 @@ Status merlin_platform_driver_unmap(struct platform_device_driver *self);
  */
 Status merlin_platform_driver_irq_displatch(uint32_t IRQn);
 
+Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn);
+
 /**
  * @brief configure the driver's target device associted GPIO, when there are some
  *
@@ -124,5 +130,21 @@ Status merlin_platform_driver_irq_displatch(uint32_t IRQn);
  * Once successfully called, the GPIOs are properly set so that the device can interract with outer world.
  */
 Status merlin_platform_driver_configure_gpio(struct platform_device_driver *self);
+
+
+/**
+ * @brief get the parent bus label for a given external device using its label
+ *
+ * This function is used to retrieve the label of the parent bus for a given external device,
+ * based on the device label set in the device tree and lonely information known by the task.
+ * This is typically used by external device drivers to get the parent bus label, which is needed
+ * to execute transactions with the device through the bus driver API.
+ *
+ * @param drv pointer to the platform_device_driver structure of the external device, which contains the device label and other metadata
+ * @param bus_label pointer to a uint32_t variable that will be filled with the parent bus label if the function succeed
+ *
+ * @return STATUS_OK if the parent bus label is found
+ */
+Status merlin_platform_driver_get_external_device_parent_bus_label(struct platform_device_driver *drv, uint32_t *bus_label);
 
 #endif/*!MERLIN_PLATFORM_H*/

@@ -8,6 +8,7 @@ merlin_common_src = []
 
 subdir('buses')
 subdir('platform')
+subdir('externals')
 
 merlin_sourceset.add(merlin_common_src)
 merlin_sourceset_config = merlin_sourceset.apply(kconfig_data, strict: false).sources()
