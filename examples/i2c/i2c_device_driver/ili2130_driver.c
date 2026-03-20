@@ -53,11 +53,11 @@ struct platform_device_driver ili2130_driver = {
     .label = 0x0UL, /* to be updated by driver probe */
     .devinfo = NULL, /* to be updated by driver probe */
     .name = "IliTech 2130 touch controller driver",
-    .compatible = "gpio,ili2130",
+    .compatible = "ilitech,ili2130",
     .platform_fops = {
         .isr = ilitech_2130_isr,
     },
-    .type = DEVICE_TYPE_GPIO,
+    .type = DEVICE_TYPE_EXT,
 };
 
 static int ilitech_2130_sleep_ms(uint32_t duration_ms)

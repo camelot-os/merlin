@@ -9,12 +9,31 @@
 #include <stddef.h>
 #include <device.h>
 
+#define I2C_MAX_DEVICES 4UL
+
+struct i2c_device_info {
+    devinfo_t devinfo;
+    devinfo_t child_devinfo[I2C_MAX_DEVICES];
+    uint32_t num_child_devices;
+    uint32_t bus_input_clock_freq;
+};
+
 {% macro device_get_hsifreq(device) -%}
 {% if device["i2c,hsifreq"] -%}
 {{ "0x%x"|format(device["i2c,hsifreq"]) }}
 {% else -%}
 {{ "0x%x"|format(0) }}
 {% endif -%}
+{% endmacro -%}
+
+{% macro seq_get(value, index, default=0) -%}
+{%- if value is number -%}
+{{- value if index == 0 else default -}}
+{%- elif value and (value|length > index) -%}
+{{- value[index] -}}
+{%- else -%}
+{{- default -}}
+{%- endif -%}
 {% endmacro -%}
 
 
@@ -36,7 +55,7 @@
 {% endif -%}
 {% endfor -%}
 
-static const devinfo_t i2c_devices[] = {
+static const struct i2c_device_info i2c_devices[] = {
     {% set ns.total_devices=0 -%}
     {% for device in dts.get_active_nodes() -%}
     {% if device is not owned or device is not enabled -%}
@@ -49,73 +68,187 @@ static const devinfo_t i2c_devices[] = {
     {% set ns.current_device_index = ns.total_devices -%}
     {% set ns.total_devices = ns.total_devices + 1 -%}
     {
-        {% set label = device['sentry,label'] -%}
-        .id = {{ "0x%xUL"|format(label) }},
-        {% if device.reg -%}
-        .baseaddr = {{ "0x%08x"|format(device.reg[0]) }},
-        .size = {{ "0x%08x"|format(device.reg[1]) }},
-        {% else -%}
-        .baseaddr = 0UL,
-        .size = 0UL,
-        {% endif -%}
-        {% if device.interrupts -%}
-        .num_interrupt = 1,
-        .its = {
-            {% if device.interrupts[0] -%}
-            {  .it_controler = {{ device.interrupts[1] }}UL, .it_num = {{ device.interrupts[0] }}UL },
+        .devinfo = {
+            {% set label = device['sentry,label'] -%}
+            .id = {{ "0x%xUL"|format(label) }},
+            {% if device.reg -%}
+            .baseaddr = {{ "0x%08x"|format(device.reg[0]) }},
+            .size = {{ "0x%08x"|format(device.reg[1]) }},
             {% else -%}
-            {  .it_controler = 0UL, .it_num = 0UL },
+            .baseaddr = 0UL,
+            .size = 0UL,
             {% endif -%}
-            {% for irq in [ 1,2,3,4,5,6,7] -%}
-            {  .it_controler = 0UL, .it_num = 0UL },
-            {% endfor -%}
+            {% if device.interrupts -%}
+            .num_interrupt = 1,
+            .its = {
+                {% if device.interrupts[0] -%}
+                {  .it_controler = {{ device.interrupts[1] }}UL, .it_num = {{ device.interrupts[0] }}UL },
+                {% else -%}
+                {  .it_controler = 0UL, .it_num = 0UL },
+                {% endif -%}
+                {% for irq in [ 1,2,3,4,5,6,7] -%}
+                {  .it_controler = 0UL, .it_num = 0UL },
+                {% endfor -%}
+            },
+            {% else -%}
+            .num_interrupt = 0,
+            .its = {
+                {% for irq in [ 0,1,2,3,4,5,6,7] -%}
+                {  .it_controler = 0UL, .it_num = 0UL },
+                {% endfor -%}
+            },
+            {% endif -%}
+            {% if device['pinctrl-0'] -%}
+            {% set numio = device['pinctrl-0']|length %}
+            .num_ios = {{ numio }},
+            .ios = {
+                {% for io in [ 0,1,2,3,4,5,6,7] -%}
+                {% if io < numio -%}
+                {% set iodata = device['pinctrl-0'][io] -%}
+                {
+                    {#
+                     the GPIO port id is numeric here, using the same resolution
+                     as the GPIO driver device tree forge (see stm32-gpio-dt.h for e.g.
+                    -#}
+                    {% set ns.io_gpio_port=0 -%}
+                    /* FIXME: adding dts primitive in devicetree to get back 'gpio_controller' label to get gpios in a portbable way */
+                    {% set gpio_ports = dts.get_compatible("st,stm32-gpio") -%}
+                    {% for port in gpio_ports -%}
+                    {% if port.status and port.status == "okay" -%}
+                    {% if port.label == iodata.pinmux[0].label -%}
+                    #define {{ "%s"|format(iodata.id.upper()) }} (dev_io_t*)&i2c_devices[{{ ns.current_device_index }}].devinfo.ios[{{ io }}]
+                    /* using port {{ port.label.upper() }} for {{ iodata.id }} */
+                    .port = {{ ns.io_gpio_port }},
+                    {% endif -%}
+                    {% set ns.io_gpio_port = ns.io_gpio_port + 1 -%}
+                    {% endif -%}
+                    {% endfor -%}
+                    .pin = {{ seq_get(iodata.pinmux, 1) }},
+                    .mode = {{ seq_get(iodata.pinmux, 2) }},
+                    .af = {{ seq_get(iodata.pinmux, 3) }},
+                    .ppull = {{ seq_get(iodata.pincfg, 0) }},
+                    .speed = {{ seq_get(iodata.pincfg, 1) }},
+                    .pupdr = {{ seq_get(iodata.pincfg, 2) }},
+                },
+                {% else -%}
+                { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
+                {% endif -%}
+                {% endfor -%}
+            },
+            {% else -%}
+            .num_ios = 0,
+            .ios = {
+                {% for io in [0,1,2,3,4,5,6,7] -%}
+                { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
+                {% endfor -%}
+            },
+            {% endif -%}
         },
-        {% else -%}
-        .num_interrupt = 0,
-        .its = {
-            {% for irq in [ 0,1,2,3,4,5,6,7] -%}
-            {  .it_controler = 0UL, .it_num = 0UL },
-            {% endfor -%}
-        },
-        {% endif -%}
-        {% if device['pinctrl-0'] -%}
-        {% set numio = device['pinctrl-0']|length %}
-        .num_ios = {{ numio }},
-        .ios = {
-            {% for io in [ 0,1,2,3,4,5,6,7] -%}
-            {% if io < numio -%}
-            {% set iodata = device['pinctrl-0'][io] -%}
+        {% set ns.num_child_devices=0 -%}
+        .child_devinfo = {
+            {% for child in device|peripherals|enabled -%}
+            {% if child is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and ns.num_child_devices < 4 -%}
             {
-                {#
-                 the GPIO port id is numeric here, using the same resolution
-                 as the GPIO driver device tree forge (see stm32-gpio-dt.h for e.g.
-                -#}
-                {% set ns.io_gpio_port=0 -%}
-                /* FIXME: adding dts primitive in devicetree to get back 'gpio_controller' label to get gpios in a portbable way */
-                {% set gpio_ports = dts.get_compatible("st,stm32-gpio") -%}
-                {% for port in gpio_ports -%}
-                {% if port.status and port.status == "okay" -%}
-                {% if port.label == iodata.pinmux[0].label -%}
-                #define {{ "%s"|format(iodata.id.upper()) }} (dev_io_t*)&i2c_devices[{{ ns.current_device_index }}].ios[{{ io }}]
-                /* using port {{ port.label.upper() }} for {{ iodata.id }} */
-                .port = {{ ns.io_gpio_port }},
+                {% set child_label = child['sentry,label'] -%}
+                {% if child_label -%}
+                .id = {{ "0x%xUL"|format(child_label) }},
+                {% else -%}
+                .id = 0UL,
                 {% endif -%}
-                {% set ns.io_gpio_port = ns.io_gpio_port + 1 -%}
+                {% if child.reg -%}
+                .baseaddr = {{ "0x%08x"|format(child.reg[0]) }},
+                .size = {{ "0x%08x"|format(child.reg[1]) }},
+                {% else -%}
+                .baseaddr = 0UL,
+                .size = 0UL,
                 {% endif -%}
-                {% endfor -%} .pin = {{ iodata.pinmux[1] }}, .mode = {{ iodata.pinmux[2] }}, .af = {{ iodata.pinmux[3] }}, .ppull =  {{ iodata.pincfg[0] }}, .speed =  {{ iodata.pincfg[1] }}, .pupdr =  {{ iodata.pincfg[2] }}, },
-            {% else -%}
-            { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
+                {% if child.interrupts -%}
+                .num_interrupt = 1,
+                .its = {
+                    {% if child.interrupts[0] -%}
+                    {  .it_controler = {{ child.interrupts[1] }}UL, .it_num = {{ child.interrupts[0] }}UL },
+                    {% else -%}
+                    {  .it_controler = 0UL, .it_num = 0UL },
+                    {% endif -%}
+                    {% for irq in [ 1,2,3,4,5,6,7] -%}
+                    {  .it_controler = 0UL, .it_num = 0UL },
+                    {% endfor -%}
+                },
+                {% else -%}
+                .num_interrupt = 0,
+                .its = {
+                    {% for irq in [ 0,1,2,3,4,5,6,7] -%}
+                    {  .it_controler = 0UL, .it_num = 0UL },
+                    {% endfor -%}
+                },
+                {% endif -%}
+                {% if child['pinctrl-0'] -%}
+                {% set child_numio = child['pinctrl-0']|length %}
+                .num_ios = {{ child_numio }},
+                .ios = {
+                    {% for child_io_idx in [ 0,1,2,3,4,5,6,7] -%}
+                    {% if child_io_idx < child_numio -%}
+                    {% set child_io = child['pinctrl-0'][child_io_idx] -%}
+                    {
+                        {% set ns.io_gpio_port=0 -%}
+                        {% set gpio_ports = dts.get_compatible("st,stm32-gpio") -%}
+                        {% for port in gpio_ports -%}
+                        {% if port.status and port.status == "okay" -%}
+                        {% if port.label == child_io.pinmux[0].label -%}
+                        /* using port {{ port.label.upper() }} for {{ child_io.id }} */
+                        .port = {{ ns.io_gpio_port }},
+                        {% endif -%}
+                        {% set ns.io_gpio_port = ns.io_gpio_port + 1 -%}
+                        {% endif -%}
+                        {% endfor -%}
+                        .pin = {{ seq_get(child_io.pinmux, 1) }},
+                        .mode = {{ seq_get(child_io.pinmux, 2) }},
+                        .af = {{ seq_get(child_io.pinmux, 3) }},
+                        .ppull = {{ seq_get(child_io.pincfg, 0) }},
+                        .speed = {{ seq_get(child_io.pincfg, 1) }},
+                        .pupdr = {{ seq_get(child_io.pincfg, 2) }},
+                    },
+                    {% else -%}
+                    { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
+                    {% endif -%}
+                    {% endfor -%}
+                },
+                {% else -%}
+                .num_ios = 0,
+                .ios = {
+                    {% for io in [0,1,2,3,4,5,6,7] -%}
+                    { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
+                    {% endfor -%}
+                },
+                {% endif -%}
+            },
+            {% set ns.num_child_devices = ns.num_child_devices + 1 -%}
+            {% endif -%}
+            {% endfor -%}
+            {% for child_idx in [0,1,2,3] -%}
+            {% if child_idx >= ns.num_child_devices -%}
+            {
+                .id = 0UL,
+                .baseaddr = 0UL,
+                .size = 0UL,
+                .num_interrupt = 0,
+                .its = {
+                    {% for irq in [ 0,1,2,3,4,5,6,7] -%}
+                    {  .it_controler = 0UL, .it_num = 0UL },
+                    {% endfor -%}
+                },
+                .num_ios = 0,
+                .ios = {
+                    {% for io in [0,1,2,3,4,5,6,7] -%}
+                    { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
+                    {% endfor -%}
+                },
+            },
             {% endif -%}
             {% endfor -%}
         },
-        {% else -%}
-        .num_ios = 0,
-        .ios = {
-            {% for io in [0,1,2,3,4,5,6,7] -%}
-            { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
-            {% endfor -%}
-        },
-        {% endif -%}
+        .num_child_devices = {{ "%uUL"|format(ns.num_child_devices) }},
+        .bus_input_clock_freq = {{ "%uUL"|format(seq_get(device['i2c,peripheral-clock'], 0, 0)|int) }},
     },
     {% endif -%}
     {% endfor %}

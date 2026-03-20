@@ -5,6 +5,7 @@
 #define MY_I2C_BUS_DRIVER_H
 
 #include <inttypes.h>
+#include <merlin/buses/i2c.h>
 
 /*
  * I2C message flags. This is a bitfield to allow ORing multiple flags.
@@ -29,22 +30,6 @@ typedef struct i2c_msg {
     uint16_t        len; /*< bytes to read, if I2C_MSG_FLAG_RCV_LEN, buf max size */
     uint8_t*        buf; /*< buffer to emit (WR)/to fulfill (RD) */
 } i2c_msg_t;
-
-
-/**
- * I2C speed modes.
- */
-enum i2c_speeds {
-	I2C_SPEED_SM_100K,
-	I2C_SPEED_FM_400K,
-	I2C_SPEED_FMP_1M,
-	I2C_SPEED_UNKNOWN
-};
-
-enum i2c_address_mode {
-    I2C_ADDRESS_7B,
-    I2C_ADDRESS_10B,
-};
 
 
 /**

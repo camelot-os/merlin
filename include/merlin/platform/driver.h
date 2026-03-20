@@ -21,7 +21,7 @@ typedef enum device_type {
 	DEVICE_TYPE_USART = 3,   /**< USART bus controller */
 	DEVICE_TYPE_CAN   = 4,   /**< CAN bus controller */
 	DEVICE_TYPE_USB   = 5,   /**< USB bus controller */
-	DEVICE_TYPE_GPIO  = 6,   /**< bare GPIO device (led, button, etc.) */
+	DEVICE_TYPE_EXT   = 6,   /**< external device (led, button, I2C slave, etc.) */
 } device_type_t;
 
 /* ISR triggered when an IRQn associated to the device is received */
@@ -130,5 +130,21 @@ Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint
  * Once successfully called, the GPIOs are properly set so that the device can interract with outer world.
  */
 Status merlin_platform_driver_configure_gpio(struct platform_device_driver *self);
+
+
+/**
+ * @brief get the parent bus label for a given external device using its label
+ *
+ * This function is used to retrieve the label of the parent bus for a given external device,
+ * based on the device label set in the device tree and lonely information known by the task.
+ * This is typically used by external device drivers to get the parent bus label, which is needed
+ * to execute transactions with the device through the bus driver API.
+ *
+ * @param drv pointer to the platform_device_driver structure of the external device, which contains the device label and other metadata
+ * @param bus_label pointer to a uint32_t variable that will be filled with the parent bus label if the function succeed
+ *
+ * @return STATUS_OK if the parent bus label is found
+ */
+Status merlin_platform_driver_get_external_device_parent_bus_label(struct platform_device_driver *drv, uint32_t *bus_label);
 
 #endif/*!MERLIN_PLATFORM_H*/

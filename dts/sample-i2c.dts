@@ -8,9 +8,9 @@
 #include <sentry.dtsi>
 
 /{
-	// A touchscreen exists on the board
+
 	touch: touch_1 {
-		compatible = "gpio,ili2130";
+		compatible = "ilitech,ili2130";
 		status = "disabled";
 	};
 };
@@ -51,21 +51,24 @@
 
 // I2C1 bus controller, used by the touchscreen peripheral, and maybe other I2C peripherals as well
 &i2c1 {
-	status = "okay";
-	compatible = "st,stm32u5-i2c";
+    status = "okay";
+    compatible = "st,stm32u5-i2c";
     sentry,owner = <0xC001F002>;
     sentry,label = <0x100>;
     i2c,hsifreq = <40>;
+	i2c,peripheral-clock = <40>; /* 40MHz APB1 clock */
     pinctrl-0 = <&i2c1_scl_pb8>, <&i2c1_sda_pb9>;
 };
 
 // Touchscreen peripheral, connected to I2C1 bus controller and to some GPIOs for reset and interrupt lines
-&touch {
-	status = "okay";
-	compatible = "gpio,ili2130";
-	sentry,owner = <0xC001F002>;
-	sentry,label = <0x101>;
-	pinctrl-0 = <&touch_rstn_pa0>, <&touch_intn_in>, <&touch_intn_out>;
+&i2c1 {
+	touch {
+		status = "okay";
+		compatible = "ilitech,ili2130";
+		sentry,owner = <0xC001F002>;
+		sentry,label = <0x101>;
+		pinctrl-0 = <&touch_rstn_pa0>, <&touch_intn_in>, <&touch_intn_out>;
+	};
 };
 
 
