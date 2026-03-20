@@ -9,7 +9,7 @@
 
 /{
 
-	touch: touch_1 {
+	touch: ili2130@41 {
 		compatible = "ilitech,ili2130";
 		status = "disabled";
 	};
