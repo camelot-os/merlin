@@ -34,8 +34,10 @@ From DTS to generated C metadata
 """""""""""""""""""""""""""""""""""""""""""""""
 
 For I2C devices, Merlin uses the template ``src/buses/i2c/i2c_dt.h.in``.
-During build, this template is rendered into a generated header
-(``builddir/src/buses/i2c/i2c_dt.h``) containing:
+For USB devices, Merlin uses the template ``src/buses/usb/usb_dt.h.in``.
+During build, each template is rendered into a generated header
+(``builddir/src/buses/i2c/i2c_dt.h`` for I2C,
+``builddir/src/buses/usb/usb_dt.h`` for USB) containing:
 
 - ``i2c_devices[]``: one ``devinfo_t`` entry per active/owned I2C node,
 - ``DEV_ID_I2C_MAX``: number of generated I2C devices,
@@ -54,7 +56,7 @@ Runtime binding in Merlin
 
 At runtime, ``merlin_platform_driver_register()`` links driver code to DTS data:
 
-1. select backend from ``driver->type`` (I2C path currently implemented),
+1. select backend from ``driver->type`` (I2C and USB paths currently implemented),
 2. resolve ``devinfo`` from the DTS-generated tables using the provided label,
 3. request and store the kernel device handle,
 4. persist the registered driver context for later IRQ dispatch.
@@ -104,4 +106,3 @@ The sample configuration enables the Merlin runtime prerequisites:
 
 These settings allow registration, MMIO mapping, and GPIO configuration through
 Merlin APIs.
-

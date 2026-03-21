@@ -56,7 +56,7 @@ jobs:
           echo "Using PKG_CONFIG_PATH=${PKG_CONFIG_PATH}"
           meson setup --cross-file "${GITHUB_WORKSPACE}/${{ matrix.cross_files_dir }}/${{ matrix.cross_file }}" \
             -Dconfig=configs/sample.config \
-            -Ddts=dts/sample-i2c.dts \
+            -Ddts=dts/sample.dts \
             -Ddts-include-dirs="${DTS_INCLUDE_DIR}" \
             -Dwith_examples=true \
             "${{ matrix.build_dir }}"

@@ -7,6 +7,7 @@
 #include <merlin/platform/driver.h>
 #include <merlin/helpers.h>
 #include "../buses/i2c/i2c.h"
+#include "../buses/usb/usb.h"
 
 /* Note that Sentry tasks are monothreaded and thus do not require locks or concurrency check ath Merlin level */
 static struct platform_device_driver *registered_drivers[CONFIG_MAX_REGISTERED_DRIVERS];
@@ -206,6 +207,11 @@ Status merlin_platform_driver_register(struct platform_device_driver *driver, ui
     switch (driver->type) {
         case DEVICE_TYPE_I2C:
             if (unlikely(merlin_platform_dts_i2c_get_devinfo(label, &devinfo) != STATUS_OK)) {
+                return STATUS_INVALID;
+            }
+            break;
+        case DEVICE_TYPE_USB:
+            if (unlikely(merlin_platform_dts_usb_get_devinfo(label, &devinfo) != STATUS_OK)) {
                 return STATUS_INVALID;
             }
             break;
