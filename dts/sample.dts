@@ -8,6 +8,22 @@
 #include <sentry.dtsi>
 
 /{
+	soc {
+		usbotg_fs: otgfs@42040000 {
+			compatible = "st,stm32-otgfs";
+			reg = <0x42040000 0x80000>;
+			interrupts = <73 0>;
+			interrupt-names = "otgfs";
+			num-bidir-endpoints = <6>;
+			ram-size = <1280>;
+			maximum-speed = "full-speed";
+			pinctrl-names = "default";
+			pinctrl-0 = <&usb_otg_fs_dm_pa11>, <&usb_otg_fs_dp_pa12>, <&usb_otg_fs_vbus_pa9>;
+			sentry,owner = <0xC001F002>;
+			sentry,label = <0x102>;
+			status = "okay";
+		};
+	};
 
 	touch: ili2130@41 {
 		compatible = "ilitech,ili2130";
@@ -109,6 +125,28 @@
 			pincfg = <STM32_OTYPER_PUSH_PULL \
 							  STM32_OSPEEDR_VERY_HIGH_SPEED \
 							  STM32_PUPDR_PULL_UP>;
+	};
+
+		usb_otg_fs_dm_pa11: usb_otg_fs_dm_pa11 {
+		id = "usb_otg_fs_dm";
+		pinmux = <&gpioa 11 STM32_DT_PIN_MODE_ALTFUNC(10)>;
+		pincfg = <STM32_OTYPER_PUSH_PULL \
+			  STM32_OSPEEDR_VERY_HIGH_SPEED \
+			  STM32_PUPDR_NO_PULL>;
+	};
+
+	usb_otg_fs_dp_pa12: usb_otg_fs_dp_pa12 {
+		id = "usb_otg_fs_dp";
+		pinmux = <&gpioa 12 STM32_DT_PIN_MODE_ALTFUNC(10)>;
+		pincfg = <STM32_OTYPER_PUSH_PULL \
+			  STM32_OSPEEDR_VERY_HIGH_SPEED \
+			  STM32_PUPDR_NO_PULL>;
+	};
+
+	usb_otg_fs_vbus_pa9: usb_otg_fs_vbus_pa9 {
+		id = "usb_otg_fs_vbus";
+		pinmux = <&gpioa 9 STM32_DT_PIN_MODE_INPUT>;
+		pincfg = <STM32_PUPDR_NO_PULL>;
 	};
 };
 
