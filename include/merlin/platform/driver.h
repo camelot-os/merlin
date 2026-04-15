@@ -131,6 +131,22 @@ Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint
  */
 Status merlin_platform_driver_configure_gpio(struct platform_device_driver *self);
 
+/**
+ * @brief get bus input clock frequency for a platform bus controller
+ *
+ * This function provides a generic interface to retrieve the parent bus input
+ * clock frequency as exported by the DTS backend for the given platform driver.
+ * The returned value is expressed in MHz and can be used by bus controller
+ * drivers to derive their prescaler / divider register configuration.
+ *
+ * @param drv pointer to the platform_device_driver structure
+ * @param busfreq_mhz pointer to output bus frequency in MHz
+ *
+ * @return STATUS_OK on success, STATUS_INVALID when the device type is not
+ * supported or arguments are invalid
+ */
+Status merlin_platform_driver_get_bus_clock(struct platform_device_driver *drv, uint32_t *busfreq_mhz);
+
 
 /**
  * @brief get the parent bus label for a given external device using its label

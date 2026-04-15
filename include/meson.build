@@ -8,6 +8,7 @@ merlin_headers = files(
     'merlin/buses/spi.h',
     'merlin/buses/i2c.h',
     'merlin/buses/usb.h',
+    'merlin/buses/usart.h',
     'merlin/arch/asm-cortex-m/io.h',
     'merlin/arch/asm-rv32/io.h',
     'merlin/arch/asm-generic/io.h',

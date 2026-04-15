@@ -8,6 +8,7 @@
 #include <merlin/helpers.h>
 #include "../buses/i2c/i2c.h"
 #include "../buses/usb/usb.h"
+#include "../buses/usart/usart.h"
 
 /* Note that Sentry tasks are monothreaded and thus do not require locks or concurrency check ath Merlin level */
 static struct platform_device_driver *registered_drivers[CONFIG_MAX_REGISTERED_DRIVERS];
@@ -215,6 +216,11 @@ Status merlin_platform_driver_register(struct platform_device_driver *driver, ui
                 return STATUS_INVALID;
             }
             break;
+        case DEVICE_TYPE_USART:
+            if (unlikely(merlin_platform_dts_usart_get_devinfo(label, &devinfo) != STATUS_OK)) {
+                return STATUS_INVALID;
+            }
+            break;
         default:
             return STATUS_INVALID;
     }
@@ -254,6 +260,22 @@ Status merlin_platform_driver_configure_gpio(struct platform_device_driver *self
     }
 end:
     return status;
+}
+
+Status merlin_platform_driver_get_bus_clock(struct platform_device_driver *drv, uint32_t *busfreq_mhz)
+{
+    if (unlikely(drv == NULL || busfreq_mhz == NULL)) {
+        return STATUS_INVALID;
+    }
+
+    switch (drv->type) {
+        case DEVICE_TYPE_I2C:
+            return merlin_i2c_get_precaler_div(drv, busfreq_mhz);
+        case DEVICE_TYPE_USART:
+            return merlin_usart_get_precaler_div(drv, busfreq_mhz);
+        default:
+            return STATUS_INVALID;
+    }
 }
 
 Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn)
