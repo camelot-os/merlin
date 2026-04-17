@@ -176,7 +176,12 @@ Status merlin_platform_driver_irq_displatch(uint32_t IRQn)
         return STATUS_INVALID;
     }
     /* calling device driver interrupt service routine */
-    return self->platform_fops.isr(self, IRQn);
+    /* acknowledge IRQ at device level using driver ISR */
+    if (self->platform_fops.isr != NULL) {
+        self->platform_fops.isr(self, IRQn);
+    }
+    /* acknowledge IRQ at interrupt controller level */
+    merlin_platform_acknowledge_irq(self, IRQn);
 }
 
 
