@@ -262,6 +262,52 @@ end:
     return status;
 }
 
+Status merlin_platform_driver_enable_irqs(struct platform_device_driver *self)
+{
+	Status status = STATUS_INVALID;
+    const devinfo_t *devinfo = NULL;
+    if (unlikely(self == NULL)) {
+        goto end;
+    }
+    devinfo = self->devinfo;
+    if (unlikely(devinfo == NULL)) {
+         goto end;
+    }
+    /* if no IRQ to enable, set to NOENT */
+    status = STATUS_NO_ENTITY;
+    for (size_t i = 0; i < devinfo->num_interrupt; i++) {
+        status = __sys_irq_enable(devinfo->its[i].it_num);
+        if (unlikely(status != STATUS_OK)) {
+            goto end;
+        }
+    }
+end:
+    return status;
+}
+
+Status merlin_platform_driver_disable_irqs(struct platform_device_driver *self)
+{
+	Status status = STATUS_INVALID;
+    const devinfo_t *devinfo = NULL;
+    if (unlikely(self == NULL)) {
+        goto end;
+    }
+    devinfo = self->devinfo;
+    if (unlikely(devinfo == NULL)) {
+         goto end;
+    }
+    /* if no IRQ to disable, set to NOENT */
+    status = STATUS_NO_ENTITY;
+    for (size_t i = 0; i < devinfo->num_interrupt; i++) {
+        status = __sys_irq_disable(devinfo->its[i].it_num);
+        if (unlikely(status != STATUS_OK)) {
+            goto end;
+        }
+    }
+end:
+    return status;
+}
+
 Status merlin_platform_driver_get_bus_clock(struct platform_device_driver *drv, uint32_t *busfreq_mhz)
 {
     if (unlikely(drv == NULL || busfreq_mhz == NULL)) {

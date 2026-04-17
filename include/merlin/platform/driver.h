@@ -123,6 +123,20 @@ Status merlin_platform_driver_irq_displatch(uint32_t IRQn);
 Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn);
 
 /**
+ * @brief Enable IRQs for a given device
+ * @param self device driver metadata
+ * @return STATUS_OK if the IRQs were successfully enabled, or other status codes depending on the error
+ */
+Status merlin_platform_driver_enable_irqs(struct platform_device_driver *self);
+
+/**
+ * @brief Disable IRQs for a given device
+ * @param self device driver metadata
+ * @return STATUS_OK if the IRQs were successfully disabled, or other status codes depending on the error
+ */
+Status merlin_platform_driver_disable_irqs(struct platform_device_driver *self);
+
+/**
  * @brief configure the driver's target device associted GPIO, when there are some
  *
  * This function use the dts-declared pinmux informations in order to configure the GPIO controller
