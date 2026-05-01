@@ -114,13 +114,13 @@ Status merlin_platform_driver_unmap(struct platform_device_driver *self);
  * This function aim to be used in the wait_for_event() Sentry UAPI when EVENT_INTERRUPT is received.
  * As Merlin knows all device drivers and associated device IRQ identifier, it can properly call the
  * corresponding driver interrupt service routine based on the previously registered drivers metadata.
+ * The driver ISR is responsible for acknowledging the IRQ at device level, and then
+ * merlin_platform_driver_irq_displatch() will acknowledge the IRQ at interrupt controller level.
  *
  * This function allows a task to manipulate multiple device drivers for multiple devices without the
  * need for knowing each device interrupt identifier.
  */
 Status merlin_platform_driver_irq_displatch(uint32_t IRQn);
-
-Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn);
 
 /**
  * @brief Enable IRQs for a given device

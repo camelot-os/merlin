@@ -706,11 +706,6 @@ static int usbotgfs_isr(void *self, uint32_t IRQn)
     if (clear_mask != 0UL) {
         usbotgfs_write32(USB_GINTSTS_OFFSET, clear_mask);
     }
-
-    if (merlin_platform_acknowledge_irq(&g_usbotgfs_driver, IRQn) != STATUS_OK) {
-        return -1;
-    }
-
     return 0;
 }
 

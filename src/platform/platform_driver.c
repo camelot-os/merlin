@@ -104,7 +104,7 @@ end:
     return res;
 }
 
-Status merlin_platform_get_driver_from_irq(uint32_t IRQn, struct platform_device_driver **drv)
+static Status merlin_platform_get_driver_from_irq(uint32_t IRQn, struct platform_device_driver **drv)
 {
     Status res = STATUS_NO_ENTITY;
     if (unlikely(drv == NULL)) {
@@ -123,6 +123,30 @@ Status merlin_platform_get_driver_from_irq(uint32_t IRQn, struct platform_device
 end:
     return res;
 }
+
+static Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn)
+{
+    Status res = STATUS_NO_ENTITY;
+    for (size_t i = 0; i < self->devinfo->num_interrupt; i++) {
+        if (self->devinfo->its[i].it_num == IRQn) {
+            /* first clear pending IRQ at NVIC level. Note that the driver must already have
+             * cleared the interrupt at the peripheral level
+             */
+            res = __sys_irq_acknowledge(self->devinfo->its[i].it_num);
+            if (unlikely(res != STATUS_OK)) {
+                goto err;
+            }
+            /* re-enable IRQ at NVIC level if needed */
+            res = __sys_irq_enable(self->devinfo->its[i].it_num);
+            if (unlikely(res != STATUS_OK)) {
+                goto err;
+            }
+        }
+    }
+err:
+    return res;
+}
+
 
 static Status merlin_platform_get_from_handle(devh_t handle, struct platform_device_driver **drv)
 {
@@ -161,19 +185,18 @@ Status merlin_platform_driver_unmap(struct platform_device_driver *self)
 }
 
 
-/* resolve driver context in the registered driver(s) for given IRQn using DTS backend,
+/*
+ * resolve driver context in the registered driver(s) for given IRQn using DTS backend,
  * and call the fops->isr routine for it.
  * Minimalist model, to auto-dispatch IRQ events received from sys_get_event()
  */
 Status merlin_platform_driver_irq_displatch(uint32_t IRQn)
 {
-    struct platform_device_driver *platform_device_driver;
-    if (unlikely(merlin_platform_get_driver_from_irq(IRQn, &platform_device_driver) != STATUS_OK)) {
-        return STATUS_INVALID;
-    }
-    struct platform_device_driver *self;
-    if (unlikely(merlin_platform_get_from_handle(platform_device_driver->devh, &self) != STATUS_OK)) {
-        return STATUS_INVALID;
+    struct platform_device_driver *self = NULL;
+    Status res = STATUS_NO_ENTITY;
+    if (unlikely(merlin_platform_get_driver_from_irq(IRQn, &self) != STATUS_OK)) {
+        res = STATUS_INVALID;
+	goto end;
     }
     /* calling device driver interrupt service routine */
     /* acknowledge IRQ at device level using driver ISR */
@@ -182,6 +205,9 @@ Status merlin_platform_driver_irq_displatch(uint32_t IRQn)
     }
     /* acknowledge IRQ at interrupt controller level */
     merlin_platform_acknowledge_irq(self, IRQn);
+    res = STATUS_OK;
+end:
+    return res;
 }
 
 
@@ -327,15 +353,4 @@ Status merlin_platform_driver_get_bus_clock(struct platform_device_driver *drv, 
         default:
             return STATUS_INVALID;
     }
-}
-
-Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn)
-{
-    Status res = STATUS_NO_ENTITY;
-    for (size_t i = 0; i < self->devinfo->num_interrupt; i++) {
-        if (self->devinfo->its[i].it_num == IRQn) {
-            res = __sys_irq_acknowledge(self->devinfo->its[i].it_num);
-        }
-    }
-    return res;
 }

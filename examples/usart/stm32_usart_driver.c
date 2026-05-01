@@ -507,6 +507,33 @@ static int stm32_usart_fops_flush(struct usart_driver *self)
 
 /**
  * @brief ISR callback bound to the platform driver entry.
+ *
+ * Note that this function is not directly called by the application but instead automatically invoked
+ * by the Merlin platform when an interrupt is received on an IRQ line associated to a registered USART instance.
+ *
+ * This is done through a typical:
+ *
+ * ```
+ * while (true) {
+ *    // blocking wait for an interrupt event
+ *    res = sys_waitforevent(EVENT_INTERRUPT, 0);
+ *    if (res == STATUS_OK) {
+ *       // IRQ received, get back irq_info struct and call merlin to dipatch the IRQ to the right driver instance
+ *       copy_from_kernel(&mybuf, sizeof(mybuf));
+ *       IRQn = mybuf.data[0];
+ *       // request merlin dispatch, that call this function automatically and acknowledge the IRQ at controller level
+ *       // once this ISR is executed
+ *       merlin_platform_driver_irq_displatch(received_IRQn);
+ *       usart_get_char(&mychar);
+ *       // process mychar the way you want here
+ *    }
+ * }
+ * ```
+ *
+ * This very simple driver is configured in polled mode, so the ISR only serves to clear pending error and TC flags
+ * when an interrupt fires, preventing the controller from getting stuck.
+ * A real driver would dispatch received bytes to a ring buffer here, rising a data_receive flag to upper layers.
+ *
  * @param self Pointer to struct platform_device_driver.
  * @param IRQn Interrupt line number.
  * @return 0 if the matching instance was found and acknowledged, -1 otherwise.
@@ -539,6 +566,7 @@ static int stm32_usart_isr(void *self, uint32_t IRQn)
              */
             usart_write32(drv, USART_ICR_OFFSET,
                           USART_ERROR_CLR | USART_ICR_TCCF);
+
             return 0;
         }
     }
@@ -642,25 +670,6 @@ int stm32_usart_flush(uint32_t label)
     }
 
     return stm32_usart_fops_flush(drv);
-}
-
-/**
- * @brief Acknowledge an IRQ across active USART instances.
- * @param IRQn Interrupt line number.
- */
-void stm32_usart_acknowledge_irq(uint32_t IRQn)
-{
-    /*
-     * Scan all active instances and forward the acknowledge to each one.
-     * merlin_platform_driver_irq_dispatch() handles the routing generically;
-     * this function lets a task explicitly acknowledge for a known IRQn.
-     */
-    for (size_t i = 0U; i < STM32_USART_MAX_INSTANCES; i++) {
-        if (g_usart_slot_used[i]) {
-            (void)merlin_platform_acknowledge_irq(
-                &g_usart_instances[i].platform, IRQn);
-        }
-    }
 }
 
 /**
