@@ -8,8 +8,9 @@ Merlin exposes three complementary API layers:
 
 - ``include/merlin/platform/driver.h``: platform abstraction for driver lifecycle
   (register, map, unmap, GPIO configuration, IRQ dispatch).
-- ``include/merlin/buses/i2c.h`` and ``include/merlin/buses/spi.h``:
-  bus-specific operation contracts (I2C read/write callbacks, SPI transfer callback).
+- ``include/merlin/buses/i2c.h``, ``include/merlin/buses/spi.h`` and
+  ``include/merlin/buses/usb.h``: bus-specific operation contracts
+  (I2C read/write callbacks, SPI transfer callback, USB endpoint callbacks).
 - ``include/merlin/io.h``: architecture-agnostic MMIO primitives
   (8/16/32-bit read/write and polling helpers).
 
@@ -25,7 +26,7 @@ Key fields are:
 
 - ``label``: device identifier matching ``sentry,label`` in the DTS.
 - ``compatible``: hardware compatibility string used by the driver logic.
-- ``type``: family selector (I2C, SPI, GPIO, ...), used by Merlin backend routing.
+- ``type``: family selector (I2C, SPI, USB, ...), used by Merlin backend routing.
 - ``devinfo``: pointer to DTS-derived metadata (base address, size, IRQs, GPIO pinmux).
 - ``platform_fops.isr``: ISR callback invoked through Merlin IRQ dispatching.
 

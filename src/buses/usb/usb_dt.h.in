@@ -1,0 +1,138 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 H2Lab Development Team
+
+#ifndef USB_DT_H
+#define USB_DT_H
+
+#include <stdint.h>
+#include <stddef.h>
+#include <device.h>
+
+struct usb_device_info {
+    devinfo_t devinfo;
+    uint32_t maximum_speed;
+};
+
+{% macro device_get_maximum_speed(device) -%}
+{% set speed = "%s"|format(device["maximum-speed"] if device["maximum-speed"] else "")|lower -%}
+{% if speed == "low-speed" -%}
+0
+{% elif speed == "full-speed" -%}
+1
+{% elif speed == "high-speed" -%}
+2
+{% elif speed == "super-speed" -%}
+3
+{% else -%}
+4
+{% endif -%}
+{% endmacro -%}
+
+{% macro seq_get(value, index, default=0) -%}
+{%- if value is number -%}
+{{- value if index == 0 else default -}}
+{%- elif value and (value|length > index) -%}
+{{- value[index] -}}
+{%- else -%}
+{{- default -}}
+{%- endif -%}
+{% endmacro -%}
+
+
+{% set ns = namespace() -%}
+{% set ns.total_devices=0 -%}
+{% set ns.current_device_index=0 -%}
+
+static const struct usb_device_info usb_devices[] = {
+    {% set ns.total_devices=0 -%}
+    {% for device in dts.get_active_nodes() -%}
+    {% if device is not owned or device is not enabled -%}
+    {% continue -%}
+    {% endif -%}
+    {% if device is not owned_by(env.CONFIG_TASK_LABEL|int(base=16)) -%}
+    {% continue -%}
+    {% endif -%}
+    {% if "USB" in "%s"|format(device.label.upper()) -%}
+    {% set ns.current_device_index = ns.total_devices -%}
+    {% set ns.total_devices = ns.total_devices + 1 -%}
+    {
+        .devinfo = {
+            {% set label = device['sentry,label'] -%}
+            .id = {{ "0x%xUL"|format(label) }},
+            {% if device.reg -%}
+            .baseaddr = {{ "0x%08x"|format(device.reg[0]) }},
+            .size = {{ "0x%08x"|format(device.reg[1]) }},
+            {% else -%}
+            .baseaddr = 0UL,
+            .size = 0UL,
+            {% endif -%}
+            {% if device.interrupts -%}
+            .num_interrupt = 1,
+            .its = {
+                {% if seq_get(device.interrupts, 0, 0) -%}
+                {  .it_controler = {{ seq_get(device.interrupts, 1, 0) }}UL, .it_num = {{ seq_get(device.interrupts, 0, 0) }}UL },
+                {% else -%}
+                {  .it_controler = 0UL, .it_num = 0UL },
+                {% endif -%}
+                {% for irq in [ 1,2,3,4,5,6,7] -%}
+                {  .it_controler = 0UL, .it_num = 0UL },
+                {% endfor -%}
+            },
+            {% else -%}
+            .num_interrupt = 0,
+            .its = {
+                {% for irq in [ 0,1,2,3,4,5,6,7] -%}
+                {  .it_controler = 0UL, .it_num = 0UL },
+                {% endfor -%}
+            },
+            {% endif -%}
+            {% if device['pinctrl-0'] -%}
+            {% set numio = device['pinctrl-0']|length %}
+            .num_ios = {{ numio }},
+            .ios = {
+                {% for io in [ 0,1,2,3,4,5,6,7] -%}
+                {% if io < numio -%}
+                {% set iodata = device['pinctrl-0'][io] -%}
+                {
+                    {% set ns.io_gpio_port=0 -%}
+                    {% set gpio_ports = dts.get_compatible("st,stm32-gpio") -%}
+                    {% for port in gpio_ports -%}
+                    {% if port.status and port.status == "okay" -%}
+                    {% if port.label == iodata.pinmux[0].label -%}
+                    #define {{ "%s"|format(iodata.id.upper()) }} (dev_io_t*)&usb_devices[{{ ns.current_device_index }}].devinfo.ios[{{ io }}]
+                    /* using port {{ port.label.upper() }} for {{ iodata.id }} */
+                    .port = {{ ns.io_gpio_port }},
+                    {% endif -%}
+                    {% set ns.io_gpio_port = ns.io_gpio_port + 1 -%}
+                    {% endif -%}
+                    {% endfor -%}
+                    .pin = {{ seq_get(iodata.pinmux, 1) }},
+                    .mode = {{ seq_get(iodata.pinmux, 2) }},
+                    .af = {{ seq_get(iodata.pinmux, 3) }},
+                    .ppull = {{ seq_get(iodata.pincfg, 0) }},
+                    .speed = {{ seq_get(iodata.pincfg, 1) }},
+                    .pupdr = {{ seq_get(iodata.pincfg, 2) }},
+                },
+                {% else -%}
+                { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
+                {% endif -%}
+                {% endfor -%}
+            },
+            {% else -%}
+            .num_ios = 0,
+            .ios = {
+                {% for io in [0,1,2,3,4,5,6,7] -%}
+                { .port = 0, .pin = 0, .mode = 0, .af = 0, .ppull = 0, .speed = 0, .pupdr = 0, },
+                {% endfor -%}
+            },
+            {% endif -%}
+        },
+        .maximum_speed = {{ "%uUL"|format(device_get_maximum_speed(device)|int) }},
+    },
+    {% endif -%}
+    {% endfor %}
+};
+
+#define DEV_ID_USB_MAX {{ "0x%xUL"|format(ns.total_devices) }}
+
+#endif
