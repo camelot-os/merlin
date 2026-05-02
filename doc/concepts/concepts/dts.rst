@@ -1,6 +1,11 @@
 DTS and dt-bindings
 ===================
 
+.. index::
+   single: DTS
+   single: dt-bindings
+   single: dts-include-dirs
+
 DeviceTree files are preprocessed before metadata generation. Any
 ``#include <...>`` statement in a DTS file is resolved from the include search
 path given to the preprocessor.
@@ -68,6 +73,13 @@ DeviceTree syntax used by Merlin's generators.
 I2C controller node (bus-level metadata)
 ----------------------------------------
 
+.. index::
+   single: DTS; I2C controller node
+   single: sentry,label
+   single: sentry,owner
+   single: i2c,hsifreq
+   single: i2c,peripheral-clock
+
 .. code-block:: dts
 
    &i2c1 {
@@ -89,6 +101,10 @@ From this node, Merlin extracts:
 I2C child peripheral node (device-level metadata)
 -------------------------------------------------
 
+.. index::
+   single: DTS; I2C peripheral node
+   single: devinfo_t
+
 .. code-block:: dts
 
    &i2c1 {
@@ -106,6 +122,12 @@ owner matches the task label.
 
 USB node (MMIO + IRQ + pinctrl)
 -------------------------------
+
+.. index::
+   single: DTS; USB node
+   single: reg
+   single: interrupts
+   single: maximum-speed
 
 .. code-block:: dts
 
@@ -137,6 +159,14 @@ From this node, Merlin extracts:
 
 How ``pinctrl-0`` configures GPIOs
 ----------------------------------
+
+.. index::
+   single: pinctrl-0
+   single: pinmux
+   single: pincfg
+   single: STM32_DT_PIN_MODE_ALTFUNC
+   single: STM32_OTYPER_OPEN_DRAIN
+   single: STM32_PUPDR_PULL_UP
 
 In Merlin DTS inputs, ``pinctrl-0`` is a list of phandle references to pin
 configuration nodes declared under ``&pinctrl``.
@@ -224,6 +254,16 @@ map, and configure the corresponding device through Merlin APIs.
 Runtime binding in Merlin
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. index::
+   single: merlin_platform_driver_register()
+   single: merlin_platform_driver_map()
+   single: merlin_platform_driver_unmap()
+   single: merlin_platform_driver_configure_gpio()
+   single: merlin_platform_driver_irq_displatch()
+   single: platform_device_driver
+   single: devinfo_t
+   single: devh_t
+
 At runtime, ``merlin_platform_driver_register()`` links driver code to DTS data:
 
 1. select backend from ``driver->type`` (I2C and USB paths currently implemented),
@@ -242,6 +282,12 @@ without manually re-parsing DTS data.
 
 Configuration requirements
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: CONFIG_WITH_MERLIN
+   single: CONFIG_MAX_REGISTERED_DRIVERS
+   single: CONFIG_CAP_DEV_BUSES
+   single: CONFIG_CAP_DEV_IO
 
 The sample configuration enables the Merlin runtime prerequisites:
 

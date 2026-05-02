@@ -1,8 +1,18 @@
 Using Merlin in a driver
 ========================
 
+.. index::
+   single: Merlin; usage
+   single: integration; driver flow
+
 Typical integration flow
 ------------------------
+
+.. index::
+   single: driver; startup sequence
+   single: probe
+   single: init
+   single: release
 
 The examples in ``examples/i2c`` illustrate a two-layer integration:
 
@@ -20,6 +30,15 @@ The recommended startup sequence is:
 Bus driver pattern (I2C)
 ------------------------
 
+.. index::
+   single: merlin_platform_driver_register()
+   single: merlin_platform_driver_map()
+   single: merlin_platform_driver_configure_gpio()
+   single: merlin_platform_driver_unmap()
+   single: merlin_ioread32()
+   single: merlin_iowrite32()
+   single: DEVICE_TYPE_I2C
+
 In ``examples/i2c/i2c_bus_driver/i2c_bus_driver.c``, the bus driver:
 
 - declares a ``platform_device_driver`` with ``.type = DEVICE_TYPE_I2C``,
@@ -36,6 +55,11 @@ The register base is never hard-coded in the driver logic; it is read from
 Peripheral driver pattern (I2C device)
 --------------------------------------
 
+.. index::
+   single: i2c_bus_read7()
+   single: i2c_bus_write7()
+   single: device driver; peripheral
+
 In ``examples/i2c/i2c_device_driver/ili2130_driver.c``, the peripheral driver:
 
 - registers against Merlin using its own DTS label (``0x101`` in the sample),
@@ -50,6 +74,11 @@ functional behavior stays in the peripheral driver.
 
 Application-level sequence example
 ----------------------------------
+
+.. index::
+   single: merlin_platform_driver_irq_displatch()
+   single: merlin_platform_acknowledge_irq()
+   single: event loop
 
 .. code-block:: c
 
@@ -79,6 +108,12 @@ The matching driver ISR then acknowledges the interrupt with
 
 Implementation checklist
 ------------------------
+
+.. index::
+   single: sentry,label
+   single: sentry,owner
+   single: compatible
+   single: driver; checklist
 
 For each new driver, verify the following points:
 

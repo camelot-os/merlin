@@ -1,8 +1,17 @@
 Merlin principles
 =================
 
+.. index::
+   single: Merlin
+   single: Camelot-OS; driver framework
+   single: platform driver framework
+
 Main goal
 ---------
+
+.. index::
+   single: Merlin; goals
+   single: device driver; userspace
 
 Merlin is a user-space driver framework for Camelot-OS operating system.
 It provides a unified and structured API for all user-space drivers
@@ -31,6 +40,12 @@ without requiring any change in the application code.
 
 Typical sequence and layer interactions
 ---------------------------------------
+
+.. index::
+   single: driver; lifecycle
+   single: probe
+   single: init
+   single: release
 
 Merlin is made to support a layered API that allows applications to easily manipulate devices drivers,
 and allows device drivers to interact between them if needed.
@@ -81,6 +96,11 @@ Such a sequence is based on the following stepping stones:
 Merlin API layers
 -----------------
 
+.. index::
+   single: include/merlin/platform/driver.h
+   single: include/merlin/buses
+   single: include/merlin/io.h
+
 Merlin exposes three complementary API layers:
 
 - ``include/merlin/platform/driver.h``: platform abstraction for driver lifecycle
@@ -97,6 +117,16 @@ device discovery, ownership checks, and runtime integration stay in Merlin.
 
 Driver identity and metadata
 ----------------------------
+
+.. index::
+   single: platform_device_driver
+   single: devinfo_t
+   single: compatible
+   single: label
+   single: DEVICE_TYPE_I2C
+   single: DEVICE_TYPE_USB
+   single: DEVICE_TYPE_USART
+   single: device_type_t
 
 Each platform driver is described using ``struct platform_device_driver``.
 Key fields are:
@@ -123,6 +153,17 @@ and examples driver usage from the application point of vue.
 I/O abstraction principle
 -------------------------
 
+.. index::
+   single: merlin_ioread8()
+   single: merlin_ioread16()
+   single: merlin_ioread32()
+   single: merlin_iowrite8()
+   single: merlin_iowrite16()
+   single: merlin_iowrite32()
+   single: merlin_iopoll32_until_set()
+   single: merlin_iopoll32_until_clear()
+   single: MMIO
+
 The MMIO accessors from ``include/merlin/io.h`` hide architecture-specific assembly
 through ``include/merlin/arch/asm-generic/io.h``.
 
@@ -138,6 +179,12 @@ across different architectures without modification.
 
 IRQ dispatch principle
 ----------------------
+
+.. index::
+   single: merlin_platform_driver_irq_displatch()
+   single: merlin_platform_acknowledge_irq()
+   single: IRQ; dispatch
+   single: platform_fops; isr
 
 Most of the time, devices events are signaled through IRQs, and handling these events is a
 critical part of the driver logic.

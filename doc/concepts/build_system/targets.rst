@@ -2,6 +2,11 @@ Basics and targets
 ------------------
 
 .. index::
+   single: build system
+   single: Meson
+   single: libmerlin.a
+
+.. index::
   single: dependencies
 
 Dependencies
@@ -21,6 +26,14 @@ static library (``libmerlin.a``) from the sources described below.
 
 Source layout
 ^^^^^^^^^^^^^
+
+.. index::
+   single: src/buses/
+   single: src/platform/
+   single: src/externals/
+   single: include/merlin/buses
+   single: include/merlin/platform
+   single: include/merlin/io.h
 
 Sources are organised under three subdirectories of ``src/``:
 
@@ -53,6 +66,11 @@ Public headers are exposed under ``include/merlin/``:
 Source integration
 ^^^^^^^^^^^^^^^^^^
 
+.. index::
+   single: merlin_sourceset
+   single: ssmod.source_set()
+   single: kconfig.h
+
 The build system uses the Meson ``sourceset`` module to assemble sources
 conditionally. Each subdirectory of ``src/`` appends its files to the
 ``merlin_common_src`` list, which is then wrapped in a ``source_set`` and
@@ -71,6 +89,13 @@ Kconfig configuration, without any manual edits to the ``meson.build`` files.
 DeviceTree-generated headers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. index::
+   single: dts2src
+   single: i2c_dt.h
+   single: usb_dt.h
+   single: *_dt.h.in
+   single: generated_private_headers
+
 Each bus driver provides a template file ``*_dt.h.in`` that is processed by the
 ``dts2src`` tool against the compiled DeviceTree to produce a private C header.
 These generated headers (e.g. ``i2c_dt.h``, ``usb_dt.h``) are tracked as
@@ -88,6 +113,11 @@ These generated headers (e.g. ``i2c_dt.h``, ``usb_dt.h``) are tracked as
 
 Final target
 ^^^^^^^^^^^^
+
+.. index::
+   single: merlin_dep
+   single: declare_dependency()
+   single: static_library()
 
 The library is assembled in a ``static_library`` target that brings together:
 
@@ -109,6 +139,10 @@ downstream projects can consume the library with a single ``dependency()`` call:
 
 Merlin examples
 ~~~~~~~~~~~~~~~
+
+.. index::
+   single: with_examples
+   single: Merlin; examples
 
 **Built by default**: false
 

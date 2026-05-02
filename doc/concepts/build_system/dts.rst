@@ -7,6 +7,12 @@ Device tree usage
 Overview
 """"""""
 
+.. index::
+   single: -Ddts=
+   single: -Ddts-include-dirs=
+   single: -Dconfig=
+   single: CONFIG_TASK_LABEL
+
 Merlin consumes DTS data at build time and exposes it to drivers through
 ``struct platform_device_driver`` at runtime.
 
@@ -37,6 +43,12 @@ from the SDK path, and do not require any user input.
 
 Sample Input artifacts
 """"""""""""""""""""""
+
+.. index::
+   single: dts/sample.dts
+   single: configs/sample.config
+   single: sentry,owner
+   single: CONFIG_TASK_LABEL
 
 The are some reference inputs in this repository to help understand the expected format of the DTS
 and Kconfig files:

@@ -1,6 +1,10 @@
 Merlin-based I2C driver
 -----------------------
 
+.. index::
+   single: I2C; driver
+   single: include/merlin/buses/i2c.h
+
 The goal is to explain the software contract with Merlin (registration,
 mapping, IRQ, bus API), not bit-level register programming details.
 
@@ -13,6 +17,17 @@ not to provide a production-ready driver for a specific SoC.
 
 Driver metadata and fops
 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: i2c_write_reg7_fn_t
+   single: i2c_read_reg7_fn_t
+   single: i2c_write_reg10_fn_t
+   single: i2c_read_reg10_fn_t
+   single: i2c_bus_fops
+   single: i2c_driver
+   single: i2c_speeds
+   single: i2c_address_mode
+   single: DEVICE_TYPE_I2C
 
 The Merlin entry point is ``include/merlin/buses/i2c.h``.
 This header defines the common contract an I2C bus driver must implement,
@@ -139,6 +154,15 @@ resolves the registered driver and invokes the I2C ISR callback.
 
 Typical I2C driver pseudo-code
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: i2c_driver_probe()
+   single: i2c_driver_init()
+   single: i2c_bus_write7()
+   single: i2c_bus_read7()
+   single: i2c_bus_write10()
+   single: i2c_bus_read10()
+   single: i2c_driver_release()
 
 ``i2c_driver_probe()`` registers the driver into Merlin using the DTS label
 that uniquely identifies the I2C controller. All further metadata
@@ -310,6 +334,10 @@ design the ISR body can be left empty until event-driven behavior is required.
 
 Exported API aliases
 ^^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: __attribute__((alias))
+   single: i2c_driver; alias
 
 The sample driver uses ``__attribute__((alias(...)))`` to decouple the public
 API names from the internal implementation symbols, keeping the header and the

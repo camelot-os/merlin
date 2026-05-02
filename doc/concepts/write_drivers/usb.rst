@@ -1,6 +1,10 @@
 Merlin-based USB driver
 -----------------------
 
+.. index::
+   single: USB; driver
+   single: include/merlin/buses/usb.h
+
 The goal is to explain the software contract with Merlin (registration,
 mapping, IRQ, bus API), not the full USB protocol stack details.
 
@@ -13,6 +17,16 @@ not to provide a production-ready USB driver for a specific SoC.
 
 Driver metadata and fops
 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: usb_set_address_fn_t
+   single: usb_write_endpoint_fn_t
+   single: usb_read_endpoint_fn_t
+   single: usb_bus_fops
+   single: usb_driver
+   single: usb_maximum_speed
+   single: usb_otg_mode
+   single: DEVICE_TYPE_USB
 
 The Merlin entry point is ``include/merlin/buses/usb.h``.
 This header defines the common contract a USB driver must implement, including
@@ -136,6 +150,14 @@ resolves the registered driver and invokes the USB ISR callback.
 
 Typical USB driver pseudo-code
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: usbotgfs_probe()
+   single: usbotgfs_init()
+   single: usbotgfs_send_data()
+   single: usbotgfs_set_recv_fifo()
+   single: usbotgfs_isr()
+   single: USB_OTG_MODE_DEVICE
 
 ``usbotgfs_probe()`` registers the driver descriptor into Merlin. Merlin
 resolves the DTS node matching the ``compatible`` string and the supplied
@@ -278,6 +300,13 @@ processed bits before returning:
 Endpoint handler registration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. index::
+   single: usbotgfs_ioep_handler_t
+   single: USB; endpoint handler
+   single: usbctrl_handle_reset()
+   single: usbctrl_handle_inepevent()
+   single: usbctrl_handle_outepevent()
+
 Upper-layer USB stacks (e.g. a USB control library) register per-endpoint
 callbacks of type ``usbotgfs_ioep_handler_t``. The ISR invokes these handlers
 when a transfer completes, passing the device handle, received byte count,
@@ -295,6 +324,12 @@ packets, manages descriptor enumeration, and drives class-specific behaviour.
 
 FIFO memory map
 ^^^^^^^^^^^^^^^
+
+.. index::
+   single: USB; FIFO
+   single: GRXFSIZ
+   single: GNPTXFSIZ
+   single: DIEPTXF
 
 The OTG FS core on STM32 provides 320 words (1280 bytes) of shared FIFO
 memory. The sample driver partitions this memory as follows:

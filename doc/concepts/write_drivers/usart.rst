@@ -1,6 +1,10 @@
 Merlin-based USART driver
 -------------------------
 
+.. index::
+   single: USART; driver
+   single: include/merlin/buses/usart.h
+
 
 The goal is to explain the software contract with Merlin (registration,
 mapping, IRQ, bus API), not bit-level register programming details.
@@ -14,6 +18,20 @@ provide a production-ready driver for a specific SoC.
 
 Driver metadata and fops
 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: usart_configure_fn_t
+   single: usart_write_fn_t
+   single: usart_read_fn_t
+   single: usart_flush_fn_t
+   single: usart_bus_fops
+   single: usart_driver
+   single: usart_config
+   single: usart_operation_mode
+   single: usart_parity
+   single: usart_stop_bits
+   single: usart_word_length
+   single: usart_flow_control
 
 The Merlin entry point is ``include/merlin/buses/usart.h``.
 This header defines the common contract a USART driver must implement at least the following
@@ -165,6 +183,14 @@ resolves the registered driver and invokes the USART ISR callback.
 Typical USART driver pseudo-code
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. index::
+   single: usart_probe()
+   single: usart_init()
+   single: usart_write()
+   single: usart_read()
+   single: usart_flush()
+   single: usart_release()
+
 ``usart_probe()`` is responsible for creating/initializing one driver context,
 binding the USART callbacks (whose signatures are defined by
 ``usart_configure_fn_t`` / ``usart_write_fn_t`` / ``usart_read_fn_t`` /
@@ -312,6 +338,10 @@ space through Merlin, and frees the instance slot so it can be re-probed.
 Typical USART driver upper API
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. index::
+   single: DEVICE_TYPE_USART
+   single: usart_bus_fops; lifecycle
+
 A usual USART driver would expose a set of public functions that implement the expected
 USART contract (probe/init/write/read/flush/release) and delegate to the lower-level bus
 callbacks. These functions are the high-level application-facing API keyed by a DTS ``label``.
@@ -345,6 +375,12 @@ consumes that state.
 
 Example Camelot-OS application integration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: event loop
+   single: merlin_platform_driver_irq_displatch()
+   single: usart_config; example
+   single: USART3_LABEL
 
 In ``main.c``, the application follows the expected flow:
 

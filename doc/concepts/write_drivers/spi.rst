@@ -1,6 +1,10 @@
 Merlin-based SPI driver
 -----------------------
 
+.. index::
+   single: SPI; driver
+   single: include/merlin/buses/spi.h
+
 The goal is to explain the software contract with Merlin (registration,
 mapping, IRQ, bus API), not bit-level register programming details.
 
@@ -13,6 +17,12 @@ not to provide a production-ready driver for a specific SoC.
 
 Driver metadata and fops
 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: spi_xfer_fn_t
+   single: spi_bus_fops
+   single: spi_driver
+   single: DEVICE_TYPE_SPI
 
 The Merlin entry point is ``include/merlin/buses/spi.h``.
 This header defines the common contract an SPI bus driver must implement.
@@ -121,6 +131,16 @@ resolves the registered driver and invokes the SPI ISR callback.
 Typical SPI driver pseudo-code
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. index::
+   single: my_driver_probe()
+   single: my_driver_init()
+   single: my_driver_xfer()
+   single: my_driver_release()
+   single: my_driver_isr()
+   single: merlin_platform_map()
+   single: merlin_platform_unmap()
+   single: merlin_platform_interrupt_iterate()
+
 ``my_driver_probe()`` retrieves the device handle from Merlin using the DTS
 label and stores it in the platform descriptor. Merlin resolves all platform
 resources (base address, IRQs, GPIO) at this point.
@@ -218,6 +238,10 @@ can stage received data or signal the upper layer:
 
 Driver registration
 ^^^^^^^^^^^^^^^^^^^
+
+.. index::
+   single: merlin_platform_driver()
+   single: SPI; registration
 
 The driver descriptor is passed to Merlin via ``merlin_platform_driver()``.
 This call is typically placed at task startup, before any SPI transaction is
