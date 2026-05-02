@@ -14,3 +14,4 @@ provides common primitives for registration, mapping, GPIO setup, and IRQ dispat
 
    principles.rst
    usage.rst
+   dts.rst
