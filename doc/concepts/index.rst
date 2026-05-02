@@ -5,19 +5,6 @@
 Welcome to Merlin documentation!
 ********************************
 
-.. toctree::
-   :maxdepth: 3
-   :caption: Contents:
-
-   concepts/index.rst
-   build_system/index.rst
-   write_drivers/index.rst
-   tests/index.rst
-
-.. toctree::
-   :hidden:
-
-   genindex
 
 .. image:: _static/figures/merlin.png
    :align: center
@@ -39,6 +26,20 @@ The Merlin driver framework is a part of the Camelot Operating System, built
 to deploy a high level security upto the micro-controller, ensuring
 secure manipulation of complex or performance critical I/O the SE is
 not able to handle.
+
+.. toctree::
+   :maxdepth: 3
+   :caption: Contents:
+
+   concepts/index.rst
+   build_system/index.rst
+   write_drivers/index.rst
+   tests/index.rst
+
+.. toctree::
+   :hidden:
+
+   genindex
 
 .. image:: _static/figures/camelot.png
    :align: right
