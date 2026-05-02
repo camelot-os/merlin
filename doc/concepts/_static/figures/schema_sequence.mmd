@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant APP as Application
+    participant DEV as Device Driver (ILI2130)
+    participant BUS as I2C Bus Driver
+    participant MERLIN as Merlin
+    participant OS as Camelot-OS + DTS
+    participant HW as I2C HW + Peripheral
+
+    APP->>BUS: i2c_driver_probe(label)
+    BUS->>MERLIN: merlin_platform_driver_register()
+    MERLIN->>OS: Check ownership + resolve DTS metadata
+    OS-->>MERLIN: devh, baseaddr, IRQ, GPIO
+    MERLIN-->>BUS: Registration OK
+
+    APP->>BUS: i2c_driver_init(speed, mode)
+    BUS->>MERLIN: map() + configure_gpio()
+    MERLIN->>OS: syscalls for mapping/GPIO
+    OS-->>MERLIN: OK
+    BUS->>HW: Configure timing + enable controller
+
+    APP->>DEV: ilitech_2130_probe/init()
+    DEV->>BUS: i2c_bus_read7()/write7()
+    BUS->>MERLIN: merlin_ioread/iowrite + polling helpers
+    MERLIN->>HW: MMIO transactions
+    HW-->>MERLIN: Status/data
+    MERLIN-->>BUS: Transfer result
+    BUS-->>DEV: Read/write result
+    DEV-->>APP: Device data/status
