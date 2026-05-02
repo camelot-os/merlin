@@ -11,6 +11,7 @@ Welcome to Merlin documentation!
 
    concepts/index.rst
    build_system/index.rst
+   write_drivers/index.rst
    tests/index.rst
 
 .. toctree::
