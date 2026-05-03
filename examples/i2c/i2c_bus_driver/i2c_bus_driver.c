@@ -439,8 +439,6 @@ static void stm32_i2c_bus_acknowledge_irq(uint32_t IRQn)
 	if (clear_flags != 0U) {
 		stm32_i2c_bus_clear_flags(clear_flags);
 	}
-	/* Now that ISR handling for this device is complete, acknowledge the IRQ */
-	merlin_platform_acknowledge_irq(&my_i2c_driver, IRQn);
 
 }
 

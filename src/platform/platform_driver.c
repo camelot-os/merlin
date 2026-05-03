@@ -8,6 +8,7 @@
 #include <merlin/helpers.h>
 #include "../buses/i2c/i2c.h"
 #include "../buses/usb/usb.h"
+#include "../buses/usart/usart.h"
 
 /* Note that Sentry tasks are monothreaded and thus do not require locks or concurrency check ath Merlin level */
 static struct platform_device_driver *registered_drivers[CONFIG_MAX_REGISTERED_DRIVERS];
@@ -103,7 +104,7 @@ end:
     return res;
 }
 
-Status merlin_platform_get_driver_from_irq(uint32_t IRQn, struct platform_device_driver **drv)
+static Status merlin_platform_get_driver_from_irq(uint32_t IRQn, struct platform_device_driver **drv)
 {
     Status res = STATUS_NO_ENTITY;
     if (unlikely(drv == NULL)) {
@@ -122,6 +123,30 @@ Status merlin_platform_get_driver_from_irq(uint32_t IRQn, struct platform_device
 end:
     return res;
 }
+
+static Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn)
+{
+    Status res = STATUS_NO_ENTITY;
+    for (size_t i = 0; i < self->devinfo->num_interrupt; i++) {
+        if (self->devinfo->its[i].it_num == IRQn) {
+            /* first clear pending IRQ at NVIC level. Note that the driver must already have
+             * cleared the interrupt at the peripheral level
+             */
+            res = __sys_irq_acknowledge(self->devinfo->its[i].it_num);
+            if (unlikely(res != STATUS_OK)) {
+                goto err;
+            }
+            /* re-enable IRQ at NVIC level if needed */
+            res = __sys_irq_enable(self->devinfo->its[i].it_num);
+            if (unlikely(res != STATUS_OK)) {
+                goto err;
+            }
+        }
+    }
+err:
+    return res;
+}
+
 
 static Status merlin_platform_get_from_handle(devh_t handle, struct platform_device_driver **drv)
 {
@@ -160,22 +185,29 @@ Status merlin_platform_driver_unmap(struct platform_device_driver *self)
 }
 
 
-/* resolve driver context in the registered driver(s) for given IRQn using DTS backend,
+/*
+ * resolve driver context in the registered driver(s) for given IRQn using DTS backend,
  * and call the fops->isr routine for it.
  * Minimalist model, to auto-dispatch IRQ events received from sys_get_event()
  */
 Status merlin_platform_driver_irq_displatch(uint32_t IRQn)
 {
-    struct platform_device_driver *platform_device_driver;
-    if (unlikely(merlin_platform_get_driver_from_irq(IRQn, &platform_device_driver) != STATUS_OK)) {
-        return STATUS_INVALID;
-    }
-    struct platform_device_driver *self;
-    if (unlikely(merlin_platform_get_from_handle(platform_device_driver->devh, &self) != STATUS_OK)) {
-        return STATUS_INVALID;
+    struct platform_device_driver *self = NULL;
+    Status res = STATUS_NO_ENTITY;
+    if (unlikely(merlin_platform_get_driver_from_irq(IRQn, &self) != STATUS_OK)) {
+        res = STATUS_INVALID;
+	goto end;
     }
     /* calling device driver interrupt service routine */
-    return self->platform_fops.isr(self, IRQn);
+    /* acknowledge IRQ at device level using driver ISR */
+    if (self->platform_fops.isr != NULL) {
+        self->platform_fops.isr(self, IRQn);
+    }
+    /* acknowledge IRQ at interrupt controller level */
+    merlin_platform_acknowledge_irq(self, IRQn);
+    res = STATUS_OK;
+end:
+    return res;
 }
 
 
@@ -212,6 +244,11 @@ Status merlin_platform_driver_register(struct platform_device_driver *driver, ui
             break;
         case DEVICE_TYPE_USB:
             if (unlikely(merlin_platform_dts_usb_get_devinfo(label, &devinfo) != STATUS_OK)) {
+                return STATUS_INVALID;
+            }
+            break;
+        case DEVICE_TYPE_USART:
+            if (unlikely(merlin_platform_dts_usart_get_devinfo(label, &devinfo) != STATUS_OK)) {
                 return STATUS_INVALID;
             }
             break;
@@ -256,13 +293,64 @@ end:
     return status;
 }
 
-Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn)
+Status merlin_platform_driver_enable_irqs(struct platform_device_driver *self)
 {
-    Status res = STATUS_NO_ENTITY;
-    for (size_t i = 0; i < self->devinfo->num_interrupt; i++) {
-        if (self->devinfo->its[i].it_num == IRQn) {
-            res = __sys_irq_acknowledge(self->devinfo->its[i].it_num);
+	Status status = STATUS_INVALID;
+    const devinfo_t *devinfo = NULL;
+    if (unlikely(self == NULL)) {
+        goto end;
+    }
+    devinfo = self->devinfo;
+    if (unlikely(devinfo == NULL)) {
+         goto end;
+    }
+    /* if no IRQ to enable, set to NOENT */
+    status = STATUS_NO_ENTITY;
+    for (size_t i = 0; i < devinfo->num_interrupt; i++) {
+        status = __sys_irq_enable(devinfo->its[i].it_num);
+        if (unlikely(status != STATUS_OK)) {
+            goto end;
         }
     }
-    return res;
+end:
+    return status;
+}
+
+Status merlin_platform_driver_disable_irqs(struct platform_device_driver *self)
+{
+	Status status = STATUS_INVALID;
+    const devinfo_t *devinfo = NULL;
+    if (unlikely(self == NULL)) {
+        goto end;
+    }
+    devinfo = self->devinfo;
+    if (unlikely(devinfo == NULL)) {
+         goto end;
+    }
+    /* if no IRQ to disable, set to NOENT */
+    status = STATUS_NO_ENTITY;
+    for (size_t i = 0; i < devinfo->num_interrupt; i++) {
+        status = __sys_irq_disable(devinfo->its[i].it_num);
+        if (unlikely(status != STATUS_OK)) {
+            goto end;
+        }
+    }
+end:
+    return status;
+}
+
+Status merlin_platform_driver_get_bus_clock(struct platform_device_driver *drv, uint32_t *busfreq_mhz)
+{
+    if (unlikely(drv == NULL || busfreq_mhz == NULL)) {
+        return STATUS_INVALID;
+    }
+
+    switch (drv->type) {
+        case DEVICE_TYPE_I2C:
+            return merlin_i2c_get_precaler_div(drv, busfreq_mhz);
+        case DEVICE_TYPE_USART:
+            return merlin_usart_get_precaler_div(drv, busfreq_mhz);
+        default:
+            return STATUS_INVALID;
+    }
 }

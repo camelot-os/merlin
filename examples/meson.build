@@ -3,3 +3,4 @@
 
 subdir('i2c')
 subdir('usb')
+subdir('usart')

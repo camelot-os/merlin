@@ -88,7 +88,31 @@
 };
 
 
+&usart3 {
+        status = "okay";
+        pinctrl-0 = <&usart3_tx>, <&usart3_rx>;
+		sentry,owner = <0xC001F002>;
+        sentry,label = <0x103>;
+		usart,peripheral-clock = <40>; /* 40MHz APB1 clock */
+};
+
 &pinctrl {
+	usart3_tx: usart3_tx {
+		id = "usart3_tx";
+		pinmux = <&gpioc 10 STM32_DT_PIN_MODE_ALTFUNC(7)>;
+		pincfg = <STM32_OTYPER_PUSH_PULL \
+			  STM32_OSPEEDR_VERY_HIGH_SPEED \
+			  STM32_PUPDR_NO_PULL>;
+	};
+
+	usart3_rx: usart3_rx {
+		id = "usart3_rx";
+		pinmux = <&gpioc 11 STM32_DT_PIN_MODE_ALTFUNC(7)>;
+		pincfg = <STM32_OTYPER_PUSH_PULL \
+			  STM32_OSPEEDR_VERY_HIGH_SPEED \
+			  STM32_PUPDR_NO_PULL>;
+	};
+
     i2c1_scl_pb8: i2c_scl_pb8 {
 			id = "i2c1_scl";
             pinmux = <&gpiob 8 STM32_DT_PIN_MODE_ALTFUNC(4)>;

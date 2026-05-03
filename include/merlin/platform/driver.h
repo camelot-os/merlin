@@ -114,13 +114,27 @@ Status merlin_platform_driver_unmap(struct platform_device_driver *self);
  * This function aim to be used in the wait_for_event() Sentry UAPI when EVENT_INTERRUPT is received.
  * As Merlin knows all device drivers and associated device IRQ identifier, it can properly call the
  * corresponding driver interrupt service routine based on the previously registered drivers metadata.
+ * The driver ISR is responsible for acknowledging the IRQ at device level, and then
+ * merlin_platform_driver_irq_displatch() will acknowledge the IRQ at interrupt controller level.
  *
  * This function allows a task to manipulate multiple device drivers for multiple devices without the
  * need for knowing each device interrupt identifier.
  */
 Status merlin_platform_driver_irq_displatch(uint32_t IRQn);
 
-Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint32_t IRQn);
+/**
+ * @brief Enable IRQs for a given device
+ * @param self device driver metadata
+ * @return STATUS_OK if the IRQs were successfully enabled, or other status codes depending on the error
+ */
+Status merlin_platform_driver_enable_irqs(struct platform_device_driver *self);
+
+/**
+ * @brief Disable IRQs for a given device
+ * @param self device driver metadata
+ * @return STATUS_OK if the IRQs were successfully disabled, or other status codes depending on the error
+ */
+Status merlin_platform_driver_disable_irqs(struct platform_device_driver *self);
 
 /**
  * @brief configure the driver's target device associted GPIO, when there are some
@@ -130,6 +144,22 @@ Status merlin_platform_acknowledge_irq(struct platform_device_driver *self, uint
  * Once successfully called, the GPIOs are properly set so that the device can interract with outer world.
  */
 Status merlin_platform_driver_configure_gpio(struct platform_device_driver *self);
+
+/**
+ * @brief get bus input clock frequency for a platform bus controller
+ *
+ * This function provides a generic interface to retrieve the parent bus input
+ * clock frequency as exported by the DTS backend for the given platform driver.
+ * The returned value is expressed in MHz and can be used by bus controller
+ * drivers to derive their prescaler / divider register configuration.
+ *
+ * @param drv pointer to the platform_device_driver structure
+ * @param busfreq_mhz pointer to output bus frequency in MHz
+ *
+ * @return STATUS_OK on success, STATUS_INVALID when the device type is not
+ * supported or arguments are invalid
+ */
+Status merlin_platform_driver_get_bus_clock(struct platform_device_driver *drv, uint32_t *busfreq_mhz);
 
 
 /**
