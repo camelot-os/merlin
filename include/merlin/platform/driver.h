@@ -45,11 +45,18 @@ struct platform_fops {
 };
 
 /**
- * @brief generic to all platform devices FOPS definition
+ * @brief generic to all platform devices metadata definition
  *
  * This structure aim to be used by various platform device families (i2c, SPI, usart, and so on) as
  * a part of the device declaration
  *
+ * Note that, in oposition to the Linux platform driver model that requires declaring each driver usual
+ * operation prototypes (e.g. probe, init, release, and so on) in the platform driver structure,
+ * the Merlin platform driver model only requires declaring the ISR callback, as this is the only common
+ * operation that needs to be called by Merlin across all device families.
+ * The other usual operations are called by the upper layer directly, and uses unified prototype definition
+ * declared in the mmerlin/api/<device_class>.h headers, so that the calling application can use the same API
+ * regardless of the underlying.
  */
 struct platform_device_driver {
 	devh_t 	  devh;	 /**< unique device handle associated to the device, forge at boot time */
