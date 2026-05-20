@@ -7,6 +7,7 @@ merlin_headers = files(
     'merlin/platform/driver.h',
     'merlin/platform/api/generic.h',
     'merlin/platform/api/usart.h',
+    'merlin/platform/api/i2c.h',
     'merlin/buses/spi.h',
     'merlin/buses/i2c.h',
     'merlin/buses/usb.h',

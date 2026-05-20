@@ -283,17 +283,19 @@ static void stm32_i2c_disable_interrupt(void)
 
 /* NOTE: in that example driver, DMA-based I2C transfer is not supported */
 
-static int stm32_i2c_bus_write7(uint8_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length)
+static drv_status_t stm32_i2c_bus_write7(uint32_t label, uint8_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length)
 {
+	/* label is ignored here has this driver only supports a single I2C bus, the one previously probed */
 	if (stm32_i2c_addr_mode != I2C_ADDRESS_7B) {
-		return -1;
+		return DRV_ERROR_CONFIGURATION;
 	}
 
 	return stm32_i2c_bus_write_internal(slave_addr, reg_addr, data, length, I2C_ADDRESS_7B);
 }
 
-static int stm32_i2c_bus_write10(uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length)
+static drv_status_t stm32_i2c_bus_write10(uint32_t label, uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length)
 {
+	/* label is ignored here has this driver only supports a single I2C bus, the one previously probed */
 	if (stm32_i2c_addr_mode != I2C_ADDRESS_10B) {
 		return -1;
 	}
@@ -301,36 +303,44 @@ static int stm32_i2c_bus_write10(uint16_t slave_addr, uint8_t reg_addr, uint8_t 
 	return stm32_i2c_bus_write_internal(slave_addr, reg_addr, data, length, I2C_ADDRESS_10B);
 }
 
-static int stm32_i2c_bus_read7(uint8_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length)
+static drv_status_t stm32_i2c_bus_read7(uint32_t label, uint8_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length)
 {
-	int res = -1;
+	drv_status_t res = DRV_ERROR_INVPARAM;
+
 
 	if (stm32_i2c_addr_mode != I2C_ADDRESS_7B) {
+		res = DRV_ERROR_CONFIGURATION;
 		goto end;
 	}
 
 	if (unlikely(length == 0U || length > I2C_TRANSFER_MAX_NBYTES)) {
+		res = DRV_ERROR_INVPARAM;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_wait_until_idle() != 0) {
+		res = DRV_ERROR_AGAIN;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_configure_transfer(slave_addr, 1U, 0, 0, I2C_ADDRESS_7B) != 0) {
+		res = DRV_ERROR_UNSUPPORTED_CFG;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_wait_flag_set(I2C_ISR_TXIS) != 0 || stm32_i2c_bus_check_and_clear_errors() != 0) {
+		res = DRV_ERROR_TIMEOUT;
 		goto end;
 	}
 	merlin_iowrite8(GET_REG_ADDR(I2C_TXDR_OFFSET), reg_addr);
 
 	if (stm32_i2c_bus_wait_flag_set(I2C_ISR_TC) != 0 || stm32_i2c_bus_check_and_clear_errors() != 0) {
+		res = DRV_ERROR_TIMEOUT;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_configure_transfer(slave_addr, length, 1, 1, I2C_ADDRESS_7B) != 0) {
+		res = DRV_ERROR_UNSUPPORTED_CFG;
 		goto end;
 	}
 
@@ -338,6 +348,7 @@ static int stm32_i2c_bus_read7(uint8_t slave_addr, uint8_t reg_addr, uint8_t *da
 		uint8_t received_data;
 
 		if (stm32_i2c_bus_wait_flag_set(I2C_ISR_RXNE) != 0 || stm32_i2c_bus_check_and_clear_errors() != 0) {
+			res = DRV_ERROR_AGAIN;
 			goto end;
 		}
 		received_data = merlin_ioread8(GET_REG_ADDR(I2C_RXDR_OFFSET));
@@ -347,48 +358,56 @@ static int stm32_i2c_bus_read7(uint8_t slave_addr, uint8_t reg_addr, uint8_t *da
 	}
 
 	if (stm32_i2c_bus_wait_for_stop() != 0) {
+		res = DRV_ERROR_TIMEOUT;
 		goto end;
 	}
 
-	res = 0;
+	res = DRV_STATUS_OK;
 end:
-	if (res != 0) {
+	if (res != DRV_STATUS_OK) {
 		stm32_i2c_bus_abort_transfer();
 	}
 	return res;
 }
 
-int stm32_i2c_bus_read10(uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length)
+static drv_status_t stm32_i2c_bus_read10(uint32_t label, uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length)
 {
-	int res = -1;
+	drv_status_t res = DRV_ERROR_INVPARAM;
 
 	if (stm32_i2c_addr_mode != I2C_ADDRESS_10B) {
+		res = DRV_ERROR_CONFIGURATION;
 		goto end;
 	}
 
 	/* note that we allow reading to trash (data buffer can be NULL) */
 	if (unlikely(length == 0U || length > I2C_TRANSFER_MAX_NBYTES)) {
+		res = DRV_ERROR_INVPARAM;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_wait_until_idle() != 0) {
+		res = DRV_ERROR_AGAIN;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_configure_transfer(slave_addr, 1U, 0, 0, I2C_ADDRESS_10B) != 0) {
+		res = DRV_ERROR_UNSUPPORTED_CFG;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_wait_flag_set(I2C_ISR_TXIS) != 0 || stm32_i2c_bus_check_and_clear_errors() != 0) {
+		res = DRV_ERROR_TIMEOUT;
 		goto end;
 	}
 	merlin_iowrite8(GET_REG_ADDR(I2C_TXDR_OFFSET), reg_addr);
 
 	if (stm32_i2c_bus_wait_flag_set(I2C_ISR_TC) != 0 || stm32_i2c_bus_check_and_clear_errors() != 0) {
+		res = DRV_ERROR_TIMEOUT;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_configure_transfer(slave_addr, length, 1, 1, I2C_ADDRESS_10B) != 0) {
+		res = DRV_ERROR_UNSUPPORTED_CFG;
 		goto end;
 	}
 
@@ -396,6 +415,7 @@ int stm32_i2c_bus_read10(uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, s
 		uint8_t received_data;
 
 		if (stm32_i2c_bus_wait_flag_set(I2C_ISR_RXNE) != 0 || stm32_i2c_bus_check_and_clear_errors() != 0) {
+			res = DRV_ERROR_AGAIN;
 			goto end;
 		}
 		received_data = merlin_ioread8(GET_REG_ADDR(I2C_RXDR_OFFSET));
@@ -405,18 +425,19 @@ int stm32_i2c_bus_read10(uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, s
 	}
 
 	if (stm32_i2c_bus_wait_for_stop() != 0) {
+		res = DRV_ERROR_TIMEOUT;
 		goto end;
 	}
 
-	res = 0;
+	res = DRV_STATUS_OK;
 end:
-	if (res != 0) {
+	if (res != DRV_STATUS_OK) {
 		stm32_i2c_bus_abort_transfer();
 	}
 	return res;
 }
 
-static void stm32_i2c_bus_acknowledge_irq(uint32_t IRQn)
+static void stm32_i2c_isr(uint32_t IRQn)
 {
 	uint32_t isr_val = merlin_ioread32(GET_REG_ADDR(I2C_ISR_OFFSET));
 	uint32_t clear_flags = 0;
@@ -455,13 +476,13 @@ static void stm32_i2c_bus_acknowledge_irq(uint32_t IRQn)
  *
  * \return 0 if the driver is successfully registered, or a negative error code otherwise.
  */
-static int stm32_i2c_driver_probe(uint32_t label)
+static drv_status_t stm32_i2c_driver_probe(uint32_t label)
 {
 	/* probing using merlin to check that this driver compatible i2c device exists and is owned */
 	if (merlin_platform_driver_register(&my_i2c_driver, label) != STATUS_OK) {
-		return -1;
+		return DRV_ERROR_NOTREGISTERED;
 	}
-	return 0;
+	return DRV_STATUS_OK;
 }
 
 /**
@@ -469,9 +490,9 @@ static int stm32_i2c_driver_probe(uint32_t label)
  * This routine initialize the I2C bus controller so that it is ready to execute I2C transactions.
  * This routine is called after the probe routine.
  */
-static int stm32_i2c_driver_init(enum i2c_speeds speed, enum i2c_address_mode mode)
+static drv_status_t stm32_i2c_driver_init(uint32_t label, enum i2c_speeds speed, enum i2c_address_mode mode)
 {
-	int res = -1;
+	drv_status_t res = DRV_ERROR_INVPARAM;
 	uint32_t timingr;
 
 	if (my_i2c_driver.devh == 0) {
@@ -479,15 +500,18 @@ static int stm32_i2c_driver_init(enum i2c_speeds speed, enum i2c_address_mode mo
 	}
 	/* map de I2C controller in the application memory */
 	if (merlin_platform_driver_map(&my_i2c_driver) != STATUS_OK) {
+		res = DRV_ERROR_MAPFAILED;
 		goto end;
 	}
 
 	/* configure GPIOs for SCL and SDA lines */
 	if (merlin_platform_driver_configure_gpio(&my_i2c_driver) != STATUS_OK) {
+		res = DRV_ERROR_CONFIGURATION;
 		goto end;
 	}
 	/* configure address mode */
 	if (stm32_i2c_bus_set_addressing_mode(mode) != 0) {
+		res = DRV_ERROR_UNSUPPORTED_CFG;
 		goto end;
 	}
 
@@ -504,6 +528,7 @@ static int stm32_i2c_driver_init(enum i2c_speeds speed, enum i2c_address_mode mo
 			timingr = I2C_TIMINGR_FMP_1M;
 			break;
 		default:
+			res = DRV_ERROR_UNSUPPORTED_CFG;
 			goto end;
 	}
 
@@ -512,14 +537,14 @@ static int stm32_i2c_driver_init(enum i2c_speeds speed, enum i2c_address_mode mo
 	/* enable the I2C bus */
 	stm32_i2c_bus_enable();
 	/* I2C initialization complete */
-	res = 0;
+	res = DRV_STATUS_OK;
 end:
 	return res;
 }
 
-static int stm32_i2c_driver_release(void)
+static drv_status_t stm32_i2c_driver_release(uint32_t label)
 {
-	int res = -1;
+	drv_status_t res = DRV_ERROR_INVPARAM;
 	if (my_i2c_driver.devh == 0) {
 		goto end;
 	}
@@ -529,29 +554,23 @@ static int stm32_i2c_driver_release(void)
 
 	/* unmap de I2C controller from the application memory */
 	if (merlin_platform_driver_unmap(&my_i2c_driver) != STATUS_OK) {
+		res = DRV_ERROR_MAPFAILED;
 		goto end;
 	}
 
-	res = 0;
+	res = DRV_STATUS_OK;
 end:
 	return res;
 }
 
-static void stm32_i2c_isr(uint32_t IRQn)
-{
-	/** TODO: TBD */
-
-}
-
 /* Aliases for the exported API functions */
-int i2c_driver_probe(uint32_t label) __attribute__((alias("stm32_i2c_driver_probe")));
-int i2c_driver_init(enum i2c_speeds speed, enum i2c_address_mode mode) __attribute__((alias("stm32_i2c_driver_init")));
-int i2c_bus_write7(uint8_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length) __attribute__((alias("stm32_i2c_bus_write7")));
-int i2c_bus_write10(uint16_t slave_addr, uint8_t reg_addr,
+drv_status_t i2c_probe(uint32_t label) __attribute__((alias("stm32_i2c_driver_probe")));
+drv_status_t i2c_init(uint32_t label, enum i2c_speeds speed, enum i2c_address_mode mode) __attribute__((alias("stm32_i2c_driver_init")));
+drv_status_t i2c_write7(uint32_t label, uint8_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length) __attribute__((alias("stm32_i2c_bus_write7")));
+drv_status_t i2c_write10(uint32_t label, uint16_t slave_addr, uint8_t reg_addr,
 	uint8_t *data, size_t length) __attribute__((alias("stm32_i2c_bus_write10")));
-int i2c_bus_read7(uint8_t slave_addr, uint8_t reg_addr,
+drv_status_t i2c_read7(uint32_t label, uint8_t slave_addr, uint8_t reg_addr,
 	uint8_t *data, size_t length) __attribute__((alias("stm32_i2c_bus_read7")));
-int i2c_bus_read10(uint16_t slave_addr, uint8_t reg_addr,
+drv_status_t i2c_read10(uint32_t label, uint16_t slave_addr, uint8_t reg_addr,
 	uint8_t *data, size_t length) __attribute__((alias("stm32_i2c_bus_read10")));
-void i2c_bus_acknowledge_irq(uint32_t IRQn) __attribute__((alias("stm32_i2c_bus_acknowledge_irq")));
-int i2c_driver_release(void) __attribute__((alias("stm32_i2c_driver_release")));
+drv_status_t i2c_release(uint32_t label) __attribute__((alias("stm32_i2c_driver_release")));
