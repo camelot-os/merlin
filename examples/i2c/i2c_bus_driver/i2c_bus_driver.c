@@ -93,6 +93,7 @@ static struct platform_device_driver my_i2c_driver = {
         .isr = NULL,
  	},
 	.type = DEVICE_TYPE_I2C,
+	.private_data = NULL, /*< to be used by the driver implementation if needed */
 };
 
 #define GET_REG_ADDR(offset) ((my_i2c_driver.devinfo->baseaddr) + (offset))

@@ -57,9 +57,10 @@ struct platform_device_driver {
 	const devinfo_t *devinfo; /**< device information retrieved from DTS, based on the label */
 	const char * name; /**< device name for debug purpose */
 	const char * compatible; /**< device compatible field declared in the bus driver, used at probe time */
-	void * driver_fops; /**< per driver-type fops vary depending on the driver family */
-	struct platform_fops platform_fops; /**< generic platform operations, common to all platform drivers */
+	struct platform_fops platform_fops; /**< generic platform operations than need to be called by merlin,
+	                                        common to all platform drivers (by now only ISR) */
 	device_type_t type; /**< device type, that allows to discriminates the way merlin interact with the dts backend */
+	void *private_data; /**< private data that can be used by the driver to store usefull information about the device */
 };
 
 /* platform level utility functions, that do not need driver-level implementation */

@@ -50,13 +50,9 @@ static struct platform_device_driver my_spi_driver {
     .devh = 0, // to be updated by driver probe
  	.name = "my SPI driver for XXX",
  	.compatible = "st,stm32", /*< maybe a table instead, like Linux */
- 	.driver_fops = (void*)(&my_spi_specific_fops),
     .platform_fops = {
-        .probe = my_driver_probe,
-        .init = my_driver_init,
-        .release = my_driver_release,
         .isr = my_driver_isr,
- 	}
+	},
 };
   // natural automatic declaration at task startup, TBD (marcro ?)
 merlin_platform_driver(&my_spi_driver);
