@@ -87,6 +87,16 @@
 	};
 };
 
+&spi1 {
+	status = "okay";
+	compatible = "st,stm32-spi";
+	interrupts = <35 0>;
+	sentry,owner = <0xC001F002>;
+	sentry,label = <0x104>;
+	spi,peripheral-clock = <40>; /* 40MHz APB2 clock */
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi1_sck_pa5>, <&spi1_miso_pa6>, <&spi1_mosi_pa7>, <&spi1_cs_pa4>;
+};
 
 &usart3 {
         status = "okay";
@@ -151,7 +161,7 @@
 							  STM32_PUPDR_PULL_UP>;
 	};
 
-		usb_otg_fs_dm_pa11: usb_otg_fs_dm_pa11 {
+	usb_otg_fs_dm_pa11: usb_otg_fs_dm_pa11 {
 		id = "usb_otg_fs_dm";
 		pinmux = <&gpioa 11 STM32_DT_PIN_MODE_ALTFUNC(10)>;
 		pincfg = <STM32_OTYPER_PUSH_PULL \
@@ -171,6 +181,38 @@
 		id = "usb_otg_fs_vbus";
 		pinmux = <&gpioa 9 STM32_DT_PIN_MODE_INPUT>;
 		pincfg = <STM32_PUPDR_NO_PULL>;
+	};
+
+	spi1_sck_pa5: spi1_sck_pa5 {
+		id = "spi1_sck";
+		pinmux = <&gpioa 5 STM32_DT_PIN_MODE_ALTFUNC(5)>;
+		pincfg = <STM32_OTYPER_PUSH_PULL \
+			  STM32_OSPEEDR_VERY_HIGH_SPEED \
+			  STM32_PUPDR_NO_PULL>;
+	};
+
+	spi1_miso_pa6: spi1_miso_pa6 {
+		id = "spi1_miso";
+		pinmux = <&gpioa 6 STM32_DT_PIN_MODE_ALTFUNC(5)>;
+		pincfg = <STM32_OTYPER_PUSH_PULL \
+			  STM32_OSPEEDR_VERY_HIGH_SPEED \
+			  STM32_PUPDR_NO_PULL>;
+	};
+
+	spi1_mosi_pa7: spi1_mosi_pa7 {
+		id = "spi1_mosi";
+		pinmux = <&gpioa 7 STM32_DT_PIN_MODE_ALTFUNC(5)>;
+		pincfg = <STM32_OTYPER_PUSH_PULL \
+			  STM32_OSPEEDR_VERY_HIGH_SPEED \
+			  STM32_PUPDR_NO_PULL>;
+	};
+
+	spi1_cs_pa4: spi1_cs_pa4 {
+		id = "spi1_cs";
+		pinmux = <&gpioa 4 STM32_DT_PIN_MODE_ALTFUNC(5)>;
+		pincfg = <STM32_OTYPER_PUSH_PULL \
+			  STM32_OSPEEDR_VERY_HIGH_SPEED \
+			  STM32_PUPDR_NO_PULL>;
 	};
 };
 
