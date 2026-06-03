@@ -88,12 +88,12 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-          set-safe-directory: true
-      - name: Clone meson-cross-files
-        run: |
-          set -euo pipefail
-          git clone --depth 1 --branch main https://github.com/camelot-os/meson-cross-files.git "${{ matrix.cross_files_dir }}"
-        shell: bash
+      - uses: actions/checkout@v6
+        with:
+          repository: camelot-os/meson-cross-files
+          fetch-depth: 0
+          fetch-tags: true
+          path: "${{ matrix.cross_files_dir }}"
       - name: install doc dependencies
         run: pip install --break-system-packages -r doc/concepts/requirements.txt
       - name: Build documentation
