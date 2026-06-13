@@ -33,6 +33,7 @@ Public interface map
    single: include/merlin/buses/i2c.h
    single: include/merlin/buses/spi.h
    single: include/merlin/buses/usart.h
+   single: include/merlin/buses/can.h
    single: include/merlin/buses/usb.h
    single: include/merlin/io.h
 
@@ -55,13 +56,10 @@ split into four layers:
        ``merlin_platform_driver_irq_displatch()``
    * - ``platform/api/*.h``
      - Unified user-facing API per bus class
-     - ``i2c_probe/init/read*/write*/release``,
-       ``spi_probe/init/xfer/release/set_cs``,
-       ``usart_probe/init/write/read/flush/release``
+     - ``i2c_probe/init/read*/write*/release``, ``spi_probe/init/xfer/release/set_cs``, ``usart_probe/init/write/read/flush/release``, ``can_probe/init/send/recv/release``
    * - ``buses/*.h``
      - Bus contracts and configuration enums/structures
-     - ``struct spi_config``, ``struct usart_config``,
-       I2C speed/addressing enums, USB endpoint operation callbacks
+     - ``struct spi_config``, ``struct usart_config``, ``struct can_config``, ``struct can_frame``, I2C speed/addressing enums, USB endpoint operation callbacks
    * - ``io.h`` + ``helpers.h``
      - Architecture-neutral MMIO and polling helpers
      - ``merlin_ioread*()``, ``merlin_iowrite*()``,
@@ -98,7 +96,7 @@ Lifecycle contract
    single: release
    single: lifecycle
 
-Across I2C, SPI, USART, and USB sample drivers, the same lifecycle is used:
+Across I2C, SPI, USART, CAN, and USB sample drivers, the same lifecycle is used:
 
 1. ``*_probe(label)``
    Register with Merlin and resolve DTS metadata ownership.

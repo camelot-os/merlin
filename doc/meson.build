@@ -31,6 +31,7 @@ concepts_rst = files(
     'concepts/concepts/index.rst',
     'concepts/concepts/principles.rst',
     'concepts/concepts/usage.rst',
+    'concepts/concepts/can.rst',
     'concepts/build_system/index.rst',
     'concepts/build_system/targets.rst',
     'concepts/build_system/dts.rst',

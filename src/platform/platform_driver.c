@@ -8,6 +8,7 @@
 #include <merlin/helpers.h>
 #include "../buses/i2c/i2c.h"
 #include "../buses/spi/spi.h"
+#include "../buses/can/can.h"
 #include "../buses/usb/usb.h"
 #include "../buses/usart/usart.h"
 
@@ -258,6 +259,11 @@ Status merlin_platform_driver_register(struct platform_device_driver *driver, ui
                 return STATUS_INVALID;
             }
             break;
+        case DEVICE_TYPE_CAN:
+            if (unlikely(merlin_platform_dts_can_get_devinfo(label, &devinfo) != STATUS_OK)) {
+                return STATUS_INVALID;
+            }
+            break;
         default:
             return STATUS_INVALID;
     }
@@ -358,6 +364,8 @@ Status merlin_platform_driver_get_bus_clock(struct platform_device_driver *drv, 
             return merlin_spi_get_precaler_div(drv, busfreq_mhz);
         case DEVICE_TYPE_USART:
             return merlin_usart_get_precaler_div(drv, busfreq_mhz);
+        case DEVICE_TYPE_CAN:
+            return merlin_can_get_precaler_div(drv, busfreq_mhz);
         default:
             return STATUS_INVALID;
     }
