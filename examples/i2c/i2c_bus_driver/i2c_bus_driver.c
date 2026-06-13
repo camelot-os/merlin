@@ -380,6 +380,11 @@ static drv_status_t stm32_i2c_bus_read10(uint32_t label, uint16_t slave_addr, ui
 {
 	drv_status_t res = DRV_ERROR_INVPARAM;
 
+	if (my_i2c_driver.devh == 0 || my_i2c_driver.label != label) {
+ 		res = DRV_ERROR_NOTREGISTERED;
+ 		goto end;
+ 	}
+
 	if (stm32_i2c_addr_mode != I2C_ADDRESS_10B) {
 		res = DRV_ERROR_CONFIGURATION;
 		goto end;
@@ -502,6 +507,7 @@ static drv_status_t stm32_i2c_driver_init(uint32_t label, enum i2c_speeds speed,
 	uint32_t timingr;
 
 	if (my_i2c_driver.devh == 0) {
+		res = DRV_ERROR_NOTREGISTERED;
 		goto end;
 	}
 	/* map de I2C controller in the application memory */
@@ -551,7 +557,8 @@ end:
 static drv_status_t stm32_i2c_driver_release(uint32_t label)
 {
 	drv_status_t res = DRV_ERROR_INVPARAM;
-	if (my_i2c_driver.devh == 0) {
+	if (my_i2c_driver.devh == 0 || my_i2c_driver.label != label) {
+		res = DRV_ERROR_NOTREGISTERED;
 		goto end;
 	}
 

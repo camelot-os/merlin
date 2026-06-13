@@ -614,9 +614,10 @@ drv_status_t stm32_usart_init(uint32_t label, const struct usart_config *cfg)
 /**
  * @brief Public write API for a specific USART instance.
  * @param label DTS label of the target USART peripheral.
- * @param wrbuf Buffer to transmit.
- * @param len Number of bytes to transmit.
- * @return 0 on success, -1 on failure.
+ * @param data Byte to transmit.
+ * @return DRV_STATUS_OK on success.
+ * @return DRV_ERROR_INVSTATE if the driver instance is not initialised.
+ * @return DRV_ERROR_AGAIN if transmission can be retried later.
  */
 drv_status_t stm32_usart_write(uint32_t label, const uint8_t data)
 {
@@ -637,17 +638,15 @@ drv_status_t stm32_usart_write(uint32_t label, const uint8_t data)
  * @brief Public read API for a specific USART instance.
  *
  * @param label DTS label of the target USART peripheral.
- * @param rdbuf Destination buffer.
- * @param len Number of bytes to read.
+ * @param data Destination for the received byte.
  *
  * @return DRV_STATUS_OK on success
- * @return DRV_ERROR_INVSTATE if the driver instance is not initialised
  * @return DRV_ERROR_INVPARAM if the provided parameters are invalid
- * @return DRV_ERROR_EAGAIN if no byte received, but the operation can be retried later
+ * @return DRV_ERROR_AGAIN if no byte received, but the operation can be retried later
  */
 drv_status_t stm32_usart_read(uint32_t label, uint8_t *data)
 {
-    drv_status_t status = DRV_ERROR_INVSTATE;
+    drv_status_t status = DRV_ERROR_INVPARAM;
     struct usart_driver *drv = stm32_usart_instance_get(label);
 
     if (drv == NULL || data == NULL) {

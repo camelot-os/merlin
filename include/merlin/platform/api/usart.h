@@ -75,12 +75,11 @@ drv_status_t usart_init(uint32_t label, const struct usart_config *cfg);
  * of bytes, but this function is the lowest level function that transmits a single
  * byte over the TX path. This API is requested.
  *
- * Not that this function should, most of the time, not be a blocking call, as
+ * Note that this function should, most of the time, not be a blocking call, as
  * the calling application may have an event loop that needs to be responsive.
  *
  * @param label DTS label identifying the controller instance
- * @param wrbuf bytes to transmit
- * @param len   number of bytes to transmit
+ * @param data byte to transmit
  *
  * @return DRV_STATUS_OK on success
  * @return DRV_ERROR_INVSTATE if the driver instance is not initialised
@@ -97,8 +96,7 @@ drv_status_t usart_write(uint32_t label, const uint8_t data);
  * responsability.
  *
  * @param label DTS label identifying the controller instance
- * @param rdbuf buffer used to store received bytes
- * @param len   number of bytes to receive
+ * @param data destination for the received byte
  *
  * @return DRV_STATUS_OK on success
  * @return DRV_ERROR_INVSTATE if the driver instance is not initialised

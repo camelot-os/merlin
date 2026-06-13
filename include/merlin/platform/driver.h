@@ -55,8 +55,8 @@ struct platform_fops {
  * the Merlin platform driver model only requires declaring the ISR callback, as this is the only common
  * operation that needs to be called by Merlin across all device families.
  * The other usual operations are called by the upper layer directly, and uses unified prototype definitions
- * declared in the merlin/api/<device_class>.h headers, so that the calling application can use the same API
- * regardless of the underlying.
+ * declared in the merlin/platform/api/<device_class>.h headers, so that the calling application can use the same API
+ * regardless of the underlying hardware implementation.
  */
 struct platform_device_driver {
 	devh_t 	  devh;	 /**< unique device handle associated to the device, forge at boot time */
