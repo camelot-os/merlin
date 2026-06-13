@@ -379,14 +379,10 @@ static drv_status_t my_driver_xfer(uint32_t label, uint8_t *rdbuf, const uint8_t
 	                               STM32_SPI_POLL_RETRIES) != STATUS_OK) {
 		return DRV_ERROR_TIMEOUT;
 	}
-
-	return DRV_STATUS_OK;
 }
 
 static drv_status_t my_driver_release(uint32_t label)
 {
-	(void)label;
-
 	/* deactivate SPI bus controller */
 	merlin_platform_driver_unmap(&my_spi_driver);
  	return DRV_STATUS_OK;
