@@ -9,7 +9,7 @@ sphinx = find_program('sphinx-build')
 
 pymod = import('python')
 sphinx = find_program('sphinx-build')
-doxygen = find_program('doxygen')
+doxygen = find_program('doxygen', required: false)
 
 py3 = pymod.find_installation(
     'python3',

@@ -62,3 +62,55 @@ jobs:
             "${{ matrix.build_dir }}"
           ninja -C "${{ matrix.build_dir }}"
         shell: bash
+
+  doc:
+    name: Build documentation
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/camelot-os/camelot-builder-sdk:nightly
+    env:
+      SDK_ROOT: ${{ matrix.sdk_root }}
+      PKG_CONFIG_PATH: ${{ matrix.sdk_root }}/lib/pkgconfig
+      PKG_CONFIG_FILE: ${{ matrix.sdk_root }}/lib/pkgconfig
+      DTS_INCLUDE_DIR: ${{ matrix.sdk_root }}/share/dts
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sdk_name: armv8m.mainline
+            sdk_root: /opt/camelot-sdk/armv8m.main
+            cross_file: cm33-none-eabi-gcc.ini
+            cross_files_dir: meson-cross-files-armv8m-mainline
+            build_dir: builddir-armv8m-mainline
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/checkout@v6
+        with:
+          repository: camelot-os/meson-cross-files
+          fetch-depth: 0
+          fetch-tags: true
+          path: "${{ matrix.cross_files_dir }}"
+      - name: install doc dependencies
+        run: pip install --break-system-packages -r doc/concepts/requirements.txt
+      - name: Build documentation
+        run: |
+          set -euo pipefail
+          cd "${GITHUB_WORKSPACE}"
+          git config --global --add safe.directory "*"
+          rm -rf "${{ matrix.build_dir }}"
+          ln -sfn /opt/arm/arm-none-eabi arm-none-eabi
+          echo "Using SDK_ROOT=${SDK_ROOT}"
+          echo "Using PKG_CONFIG_PATH=${PKG_CONFIG_PATH}"
+          meson setup --cross-file "${GITHUB_WORKSPACE}/${{ matrix.cross_files_dir }}/${{ matrix.cross_file }}" \
+            -Dconfig=configs/sample.config \
+            -Ddts=dts/sample.dts \
+            -Ddts-include-dirs="${DTS_INCLUDE_DIR}" \
+            -Dwith_examples=false \
+            -Dwith_doc=true \
+            "${{ matrix.build_dir }}"
+          ninja -C "${{ matrix.build_dir }}" doc/concepts
+        shell: bash
