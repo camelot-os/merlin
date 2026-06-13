@@ -17,7 +17,7 @@ drv_status_t spi_probe(uint32_t label);
 /**
  * @brief Configure SPI controller parameters.
  *
- * @param self pointer to the spi_driver structure
+ * @param label SPI bus label
  * @param config SPI bus and frame configuration
  *
  * @return 0 on success, negative error code on failure
@@ -38,6 +38,15 @@ drv_status_t spi_init(uint32_t label, struct spi_config *config);
  * @return 0 on success, negative error code on failure
  */
 drv_status_t spi_xfer(uint32_t label, uint8_t *rdbuf, const uint8_t *wrbuf, size_t len);
+
+/**
+ * @brief Release SPI controller resources.
+ *
+ * @param label SPI bus label
+ *
+ * @return 0 on success, negative error code on failure
+ */
+drv_status_t spi_release(uint32_t label);
 
 /**
  * @brief Optional software chip-select control.

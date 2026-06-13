@@ -2,7 +2,7 @@
 // Copyright (c) 2026 H2Lab Development Team
 
 /*
- * a typical SPI bus driver then needs only the following in its source code:
+ * A typical SPI bus driver needs only the following in its source code:
  */
 #include <inttypes.h>
 #include <stddef.h>
@@ -12,7 +12,7 @@
 #include <merlin/io.h>
 
 
-/** @file basic, single controller driver */
+/** @file Basic, single-controller driver */
 
 #define MY_SPI_BUS_LABEL CONFIG_SPI_ST32_LABEL
 
@@ -68,6 +68,34 @@ static inline void my_spi_write32(const struct my_spi_private *ctx, size_t offse
 	merlin_iowrite32(my_spi_reg(ctx, offset), value);
 }
 
+static drv_status_t my_spi_apply_sw_cs(const struct my_spi_private *ctx, bool active)
+{
+	bool nss_internal_high;
+	uint32_t cr1;
+
+	if (ctx == NULL) {
+		return DRV_ERROR_INVSTATE;
+	}
+
+	/* In SSM mode, SSI drives the internal NSS level. */
+	if (ctx->cfg.cs_polarity == SPI_CS_ACTIVE_LOW) {
+		nss_internal_high = !active;
+	} else {
+		nss_internal_high = active;
+	}
+
+	cr1 = merlin_ioread32(my_spi_reg(ctx, STM32_SPI_CR1_OFFSET));
+	cr1 |= STM32_SPI_CR1_SSM;
+	if (nss_internal_high) {
+		cr1 |= STM32_SPI_CR1_SSI;
+	} else {
+		cr1 &= ~STM32_SPI_CR1_SSI;
+	}
+	merlin_iowrite32(my_spi_reg(ctx, STM32_SPI_CR1_OFFSET), cr1);
+
+	return DRV_STATUS_OK;
+}
+
 static uint32_t my_spi_compute_br_bits(uint32_t bus_hz, uint32_t speed_hz)
 {
 	static const uint16_t dividers[8] = {2U, 4U, 8U, 16U, 32U, 64U, 128U, 256U};
@@ -108,9 +136,11 @@ static int my_driver_isr(void *self, uint32_t IRQn)
 	struct platform_device_driver *pdrv = (struct platform_device_driver *)self;
 	/*
 	 * no usage by now here, when supporting multiple controller in the same driver,
-	 * allows to target directly the good controler instance and use associated
+	 * allows to target directly the good controller instance and use associated
 	 * private_data if needed
 	 */
+	(void)pdrv;
+	(void)IRQn;
 	return DRV_STATUS_OK;
 }
 
@@ -132,6 +162,7 @@ end:
 
 static drv_status_t my_driver_init(uint32_t label, struct spi_config *config)
 {
+	drv_status_t res = DRV_STATUS_OK;
 	uint32_t cr1 = 0UL;
 	uint32_t cr2 = 0UL;
 	uint32_t busfreq_mhz = 0UL;
@@ -142,41 +173,47 @@ static drv_status_t my_driver_init(uint32_t label, struct spi_config *config)
 		return DRV_ERROR_INVPARAM;
 	}
 
+	my_spi_ctx.initialized = false;
+	my_spi_driver.private_data = NULL;
+
  	if (unlikely(merlin_platform_driver_map(&my_spi_driver) != STATUS_OK)) {
 		return DRV_ERROR_MAPFAILED;
 	}
 
 	if ((my_spi_driver.devinfo == NULL) || (my_spi_driver.devinfo->baseaddr == 0UL)) {
-		return DRV_ERROR_CONFIGURATION;
+		res = DRV_ERROR_CONFIGURATION;
+		goto err_unmap;
 	}
 	my_spi_ctx.base = (size_t)my_spi_driver.devinfo->baseaddr;
 
 	if (merlin_platform_driver_configure_gpio(&my_spi_driver) != STATUS_OK) {
-		return DRV_ERROR_CONFIGURATION;
+		res = DRV_ERROR_CONFIGURATION;
+		goto err_unmap;
 	}
 
 	if (merlin_platform_driver_get_bus_clock(&my_spi_driver, &busfreq_mhz) != STATUS_OK) {
-		return DRV_ERROR_CONFIGURATION;
+		res = DRV_ERROR_CONFIGURATION;
+		goto err_unmap;
 	}
 	bus_hz = busfreq_mhz * 1000000UL;
 
-	/** adding driver local configuration infos to platform driver private data */
+	/** Add driver local configuration infos to platform driver private data. */
 	my_spi_ctx.cfg = *config;
-	my_spi_ctx.initialized = true;
 	my_spi_ctx.loopback = false;
-	my_spi_driver.private_data = &my_spi_ctx;
 
 	if (config->word_size_bits == 16U) {
 		cr1 |= STM32_SPI_CR1_DFF;
 	} else if (config->word_size_bits != 8U) {
-		return DRV_ERROR_UNSUPPORTED_CFG;
+		res = DRV_ERROR_UNSUPPORTED_CFG;
+		goto err_unmap;
 	}
 
 	loopback = (config->controller_mode == SPI_CONTROLLER_MODE_LOOPBACK);
 	if ((config->controller_mode == SPI_CONTROLLER_MODE_MASTER) || loopback) {
 		cr1 |= STM32_SPI_CR1_MSTR;
 	} else if (config->controller_mode != SPI_CONTROLLER_MODE_SLAVE) {
-		return DRV_ERROR_UNSUPPORTED_CFG;
+		res = DRV_ERROR_UNSUPPORTED_CFG;
+		goto err_unmap;
 	}
 	my_spi_ctx.loopback = loopback;
 
@@ -207,7 +244,8 @@ static drv_status_t my_driver_init(uint32_t label, struct spi_config *config)
 			cr1 |= STM32_SPI_CR1_BIDIMODE;
 			break;
 		default:
-			return DRV_ERROR_UNSUPPORTED_CFG;
+			res = DRV_ERROR_UNSUPPORTED_CFG;
+			goto err_unmap;
 	}
 
 	if (loopback) {
@@ -216,7 +254,8 @@ static drv_status_t my_driver_init(uint32_t label, struct spi_config *config)
 		 * Force the controller in 2-lines full-duplex mode.
 		 */
 		if (config->duplex_mode != SPI_DUPLEX_FULL) {
-			return DRV_ERROR_UNSUPPORTED_CFG;
+			res = DRV_ERROR_UNSUPPORTED_CFG;
+			goto err_unmap;
 		}
 		cr1 &= ~(STM32_SPI_CR1_BIDIMODE | STM32_SPI_CR1_BIDIOE | STM32_SPI_CR1_RXONLY);
 	}
@@ -234,23 +273,30 @@ static drv_status_t my_driver_init(uint32_t label, struct spi_config *config)
 	my_spi_write32(&my_spi_ctx, STM32_SPI_CR1_OFFSET, (cr1 | STM32_SPI_CR1_SPE));
 
 	if (config->cs_management == SPI_CS_SOFTWARE) {
-		drv_status_t cs_res = my_driver_set_cs(label, config->cs_index, false);
-		if (cs_res != DRV_STATUS_OK) {
-			return cs_res;
+		res = my_spi_apply_sw_cs(&my_spi_ctx, false);
+		if (res != DRV_STATUS_OK) {
+			goto err_unmap;
 		}
 	}
+
+	my_spi_driver.private_data = &my_spi_ctx;
+	my_spi_ctx.initialized = true;
 
 	// configure SPI bus based on config parameters (speed, duplex, frame format, and so on)
  	// [...]
 
  	return DRV_STATUS_OK;
+
+err_unmap:
+	merlin_platform_driver_unmap(&my_spi_driver);
+	my_spi_driver.private_data = NULL;
+	my_spi_ctx.initialized = false;
+	return res;
 }
 
 drv_status_t my_driver_set_cs(uint32_t label, uint8_t cs_index, bool active)
 {
 	struct my_spi_private *ctx = (struct my_spi_private *)my_spi_driver.private_data;
-	bool nss_internal_high;
-	uint32_t cr1;
 
 	(void)label;
 
@@ -266,29 +312,11 @@ drv_status_t my_driver_set_cs(uint32_t label, uint8_t cs_index, bool active)
 		return DRV_ERROR_UNSUPPORTED;
 	}
 
-	/* In SSM mode, SSI drives the internal NSS level. */
-	if (ctx->cfg.cs_polarity == SPI_CS_ACTIVE_LOW) {
-		nss_internal_high = !active;
-	} else {
-		nss_internal_high = active;
-	}
-
-	cr1 = merlin_ioread32(my_spi_reg(ctx, STM32_SPI_CR1_OFFSET));
-	cr1 |= STM32_SPI_CR1_SSM;
-	if (nss_internal_high) {
-		cr1 |= STM32_SPI_CR1_SSI;
-	} else {
-		cr1 &= ~STM32_SPI_CR1_SSI;
-	}
-	merlin_iowrite32(my_spi_reg(ctx, STM32_SPI_CR1_OFFSET), cr1);
-
-	// assert or deassert the specified chip select line, based on cs_index and active parameters
-	// [...]
-
-	return DRV_STATUS_OK;
+	return my_spi_apply_sw_cs(ctx, active);
 }
 
-static drv_status_t my_driver_xfer(uint32_t label, uint8_t *rdbuf, uint8_t *wrbuf, size_t len) {
+static drv_status_t my_driver_xfer(uint32_t label, uint8_t *rdbuf, const uint8_t *wrbuf, size_t len)
+{
 	struct my_spi_private *ctx = (struct my_spi_private *)my_spi_driver.private_data;
 	bool do_read;
 	bool do_write;
@@ -315,6 +343,11 @@ static drv_status_t my_driver_xfer(uint32_t label, uint8_t *rdbuf, uint8_t *wrbu
 	do_read = (rdbuf != NULL) ||
 		(ctx->cfg.duplex_mode == SPI_DUPLEX_FULL) ||
 		(ctx->cfg.duplex_mode == SPI_DUPLEX_SIMPLEX_RX);
+
+	/* In master mode, RX-only transfers still require dummy writes to generate clock. */
+	if (!do_write && do_read && (ctx->cfg.controller_mode != SPI_CONTROLLER_MODE_SLAVE)) {
+		do_write = true;
+	}
 
 	for (size_t i = 0U; i < len; i++) {
 		if (do_write) {
@@ -352,6 +385,8 @@ static drv_status_t my_driver_xfer(uint32_t label, uint8_t *rdbuf, uint8_t *wrbu
 
 static drv_status_t my_driver_release(uint32_t label)
 {
+	(void)label;
+
 	/* deactivate SPI bus controller */
 	merlin_platform_driver_unmap(&my_spi_driver);
  	return DRV_STATUS_OK;
