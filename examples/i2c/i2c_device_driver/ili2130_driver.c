@@ -2,14 +2,13 @@
 // Copyright (c) 2026 H2Lab Development Team
 
 #include <string.h>
-#include <i2c_bus_driver.h>
-#include <ili2130_driver.h>
+#include <merlin/platform/api/i2c.h>
 #include <merlin/platform/driver.h>
 #include <merlin/buses/i2c.h>
 #include <merlin/io.h>
 #include <merlin/helpers.h>
 #include <uapi.h>
-
+#include "ili2130_driver.h"
 
 #define ILI2130_I2C_ADDR 0x41
 
@@ -120,8 +119,9 @@ static int ilitech_2130_reset_with_configured_pinmux(struct platform_device_driv
     return 0;
 }
 
-int ilitech_2130_probe(void)
+int ilitech_2130_probe(uint32_t buslabel)
 {
+    /* buslabel identifies the I2C bus controller (DTS label) used to access the touchscreen */
     int res = -1;
     /* first register against merlin, that do probe against the task DTS */
     if (unlikely(merlin_platform_driver_register(&ili2130_driver, 0x101) != STATUS_OK)) {
@@ -137,7 +137,7 @@ int ilitech_2130_probe(void)
      */
     /* identify the device first */
     uint8_t chip_id[2];
-    if (i2c_bus_read7(ILI2130_I2C_ADDR, ILI2130_REG_CHIP_ID, chip_id, sizeof(chip_id)) != 0) {
+    if (i2c_read7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_CHIP_ID, chip_id, sizeof(chip_id)) != 0) {
         goto end;
     }
     uint16_t chip_id_value = (chip_id[0] << 8) | chip_id[1];
@@ -150,7 +150,7 @@ end:
     return res;
 }
 
-int ilitech_2130_init(void)
+int ilitech_2130_init(uint32_t buslabel)
 {
     int res = -1;
 
@@ -161,7 +161,7 @@ int ilitech_2130_init(void)
     /* here we consider that the I2C bus on which the touch controller is connected is already initialized and registered */
     /* identify the device first */
     uint8_t chip_id[2];
-    if (i2c_bus_read7(ILI2130_I2C_ADDR, ILI2130_REG_CHIP_ID, chip_id, sizeof(chip_id)) != 0) {
+    if (i2c_read7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_CHIP_ID, chip_id, sizeof(chip_id)) != 0) {
         goto end;
     }
     uint16_t chip_id_value = (chip_id[0] << 8) | chip_id[1];
@@ -173,25 +173,25 @@ int ilitech_2130_init(void)
 
     /* ensure controller is awake */
     uint8_t power_ctrl = ILI2130_POWER_CTRL_WAKE;
-    if (i2c_bus_write7(ILI2130_I2C_ADDR, ILI2130_REG_POWER_CTRL, &power_ctrl, 1) != 0) {
+    if (i2c_write7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_POWER_CTRL, &power_ctrl, 1) != 0) {
         goto end;
     }
 
     /* disable gesture engine */
     uint8_t gesture_mode = ILI2130_GESTURE_NONE;
-    if (i2c_bus_write7(ILI2130_I2C_ADDR, ILI2130_REG_GESTURE, &gesture_mode, 1) != 0) {
+    if (i2c_write7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_GESTURE, &gesture_mode, 1) != 0) {
         goto end;
     }
 
     /* disable all interrupts: polling mode */
     uint8_t int_enable = 0x00;
-    if (i2c_bus_write7(ILI2130_I2C_ADDR, ILI2130_REG_INT_ENABLE, &int_enable, 1) != 0) {
+    if (i2c_write7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_INT_ENABLE, &int_enable, 1) != 0) {
         goto end;
     }
 
     /* clear pending touch/gesture status before entering polling loop */
     uint8_t int_clear = ILI2130_INT_STATUS_TOUCH | ILI2130_INT_STATUS_GESTURE;
-    if (i2c_bus_write7(ILI2130_I2C_ADDR, ILI2130_REG_INT_CLEAR, &int_clear, 1) != 0) {
+    if (i2c_write7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_INT_CLEAR, &int_clear, 1) != 0) {
         goto end;
     }
 
@@ -203,17 +203,17 @@ end:
     return res;
 }
 
-int ilitech_2130_poll_touch_info(struct touch_informations *touch_info)
+int ilitech_2130_poll_touch_info(uint32_t buslabel, struct touch_informations *touch_info)
 {
     int res = -1;
     /* react to touch interrupt, and get back corrdinates in one-touch mode for simplicity */
     uint8_t int_status;
-    if (i2c_bus_read7(ILI2130_I2C_ADDR, ILI2130_REG_INT_STATUS, &int_status, 1) != 0) {
+    if (i2c_read7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_INT_STATUS, &int_status, 1) != 0) {
         goto end;
     }
     if (int_status & ILI2130_INT_STATUS_TOUCH) {
         uint8_t touch_data[ILI2130_TOUCH_POINT_DATA_SIZE];
-        if (i2c_bus_read7(ILI2130_I2C_ADDR, ILI2130_REG_TOUCH_DATA, touch_data, sizeof(touch_data)) != 0) {
+        if (i2c_read7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_TOUCH_DATA, touch_data, sizeof(touch_data)) != 0) {
             goto end;
         }
         uint16_t x = (touch_data[0] << 8) | touch_data[1];
@@ -234,12 +234,12 @@ end:
     return res;
 }
 
-int ilitech_2130_sleep(void)
+int ilitech_2130_sleep(uint32_t buslabel)
 {
     int res = -1;
     /* put the touch controller in sleep mode */
     uint8_t power_ctrl = ILI2130_POWER_CTRL_SLEEP;
-    if (i2c_bus_write7(ILI2130_I2C_ADDR, ILI2130_REG_POWER_CTRL, &power_ctrl, 1) != 0) {
+    if (i2c_write7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_POWER_CTRL, &power_ctrl, 1) != 0) {
         goto end;
     }
     res = 0;
@@ -247,12 +247,12 @@ end:
     return res;
 }
 
-int ilitech_2130_wake(void)
+int ilitech_2130_wake(uint32_t buslabel)
 {
     int res = -1;
     /* wake up the touch controller */
     uint8_t power_ctrl = ILI2130_POWER_CTRL_WAKE;
-    if (i2c_bus_write7(ILI2130_I2C_ADDR, ILI2130_REG_POWER_CTRL, &power_ctrl, 1) != 0) {
+    if (i2c_write7(buslabel, ILI2130_I2C_ADDR, ILI2130_REG_POWER_CTRL, &power_ctrl, 1) != 0) {
         goto end;
     }
     res = 0;
@@ -260,7 +260,7 @@ end:
     return res;
 }
 
-int ilitech_2130_get_last_touch_info(struct touch_informations *touch_info)
+int ilitech_2130_get_last_touch_info(uint32_t buslabel, struct touch_informations *touch_info)
 {
     int res = -1;
     if ((unlikely(touch_info == NULL))) {
