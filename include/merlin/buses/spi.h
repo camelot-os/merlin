@@ -107,12 +107,5 @@ struct spi_config {
 	bool cs_keep_active;
 };
 
-drv_status_t spi_probe(uint32_t label);
-drv_status_t spi_init(uint32_t label, struct spi_config *config);
-drv_status_t spi_xfer(uint32_t label, uint8_t *rdbuf, const uint8_t *wrbuf, size_t len);
-drv_status_t spi_release(uint32_t label);
-drv_status_t spi_set_cs(uint32_t label, uint8_t cs_index, bool active);
-
-
 
 #endif/*!MERLIN_SPI_H*/

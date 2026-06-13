@@ -5,9 +5,6 @@
 #define MERLIN_I2C_H
 
 #include <types.h>
-#include <merlin/platform/driver.h>
-
-
 /**
  * @brief I2C speed modes, as defined by the I2C specifications.
  *
@@ -38,76 +35,5 @@ enum i2c_address_mode {
     I2C_ADDRESS_7B,    /**< 7-bit addressing mode */
     I2C_ADDRESS_10B,   /**< 10-bit addressing mode */
 };
-
-/** I2C driver structure pre-declaration */
-struct i2c_driver;
-
-/* I2C specific functions that need to be implemented by the driver */
-
-/**
- * @brief I2C write function for 7-bit register address
- *
- * @param self pointer to the i2c_driver structure, which contains the private data and the fops of the driver
- * @param wdbuf buffer containing the data to be written, including the slave address
- * @param len number of bytes to write
- *
- * @return 0 on success, negative error code on failure
- */
-typedef int	(*i2c_write_reg7_fn_t)(struct i2c_driver *self, uint8_t *wdbuf, size_t len);
-
-/**
- * @brief I2C read function for 7-bit register address
- *
- * @param self pointer to the i2c_driver structure, which contains the private data and the fops of the driver
- * @param rdbuf buffer to store the read data, including the slave address
- * @param len number of bytes to read
- *
- * @return 0 on success, negative error code on failure
- */
-typedef int	(*i2c_read_reg7_fn_t)(struct i2c_driver *self, uint8_t *rdbuf, size_t len);
-
-/**
- * @brief I2C write function for 10-bit register address
- *
- * @param self pointer to the i2c_driver structure, which contains the private data and the fops of the driver
- * @param wdbuf buffer containing the data to be written, including the slave address
- * @param len number of bytes to write
- *
- * @return 0 on success, negative error code on failure
- */
-typedef int	(*i2c_write_reg10_fn_t)(struct i2c_driver *self, uint8_t *wrbuf, size_t len);
-
-/**
- * @brief I2C read function for 10-bit register address
- *
- * @param self pointer to the i2c_driver structure, which contains the private data and the fops of the driver
- * @param rdbuf buffer to store the read data, including the slave address
- * @param len number of bytes to read
- *
- * @return 0 on success, negative error code on failure
- */
-typedef int	(*i2c_read_reg10_fn_t)(struct i2c_driver *self, uint8_t *rdbuf, size_t len);
-
-/**
- * @brief I2C specific fops definition
- *
- * This function needs to be implemented in the I2C driver and declared
- */
-struct i2c_bus_fops {
-	i2c_write_reg7_fn_t write7;    /**< write function for 7-bit register address */
-	i2c_read_reg7_fn_t read7;      /**< read function for 7-bit register address */
-	i2c_write_reg10_fn_t write10;  /**< write function for 10-bit register address */
-	i2c_read_reg10_fn_t read10;    /**< read function for 10-bit register address */
-};
-
-/**
- * @brief that declare a I2C Bus driver, which is a type of platform driver
- */
-struct i2c_driver {
-	struct i2c_bus_fops * fops;             /**< I2C specific fops, see above */
-	struct platform_device * platform_fops; /**< platform-generic fops */
-	void *private_data;                     /**< private data for the driver, if needed */
-};
-
 
 #endif/*!MERLIN_I2C_H*/

@@ -1,79 +1,193 @@
-Merlin principles
+Merlin Principles
 =================
 
-Layered API model
------------------
+.. index::
+   single: Merlin
+   single: Camelot-OS; userspace driver framework
+   single: platform driver model
 
-Merlin exposes three complementary API layers:
+Design intent
+-------------
 
-- ``include/merlin/platform/driver.h``: platform abstraction for driver lifecycle
-  (register, map, unmap, GPIO configuration, IRQ dispatch).
-- ``include/merlin/buses/i2c.h``, ``include/merlin/buses/spi.h`` and
-  ``include/merlin/buses/usb.h``: bus-specific operation contracts
-  (I2C read/write callbacks, SPI transfer callback, USB endpoint callbacks).
-- ``include/merlin/io.h``: architecture-agnostic MMIO primitives
-  (8/16/32-bit read/write and polling helpers).
+Merlin implements a small, explicit contract between application code,
+userspace drivers, and Camelot-OS platform services.
 
-This split keeps the hardware-dependent code focused on register semantics, while
-device discovery, ownership checks, and runtime integration stay in Merlin.
+The framework design goals are:
 
+- keep hardware-specific logic in drivers (register programming, protocol state);
+- keep platform-specific integration in Merlin (DTS metadata, mapping,
+  pinmux/GPIO setup, IRQ routing);
+- provide a stable, family-oriented API so upper-layer code remains portable
+  across SoCs and concrete driver implementations.
 
-Driver identity and metadata
-----------------------------
+Compared to a monolithic BSP style, Merlin reduces duplication in probe/init
+plumbing while preserving low-level control where it matters: MMIO sequencing,
+timeouts, and hardware state machines.
 
-Each platform driver is described using ``struct platform_device_driver``.
-Key fields are:
+Public interface map
+--------------------
 
-- ``label``: device identifier matching ``sentry,label`` in the DTS.
-- ``compatible``: hardware compatibility string used by the driver logic.
-- ``type``: family selector (I2C, SPI, USB, ...), used by Merlin backend routing.
-- ``devinfo``: pointer to DTS-derived metadata (base address, size, IRQs, GPIO pinmux).
-- ``platform_fops.isr``: ISR callback invoked through Merlin IRQ dispatching.
+.. index::
+   single: include/merlin/platform/driver.h
+   single: include/merlin/platform/api/generic.h
+   single: include/merlin/buses/i2c.h
+   single: include/merlin/buses/spi.h
+   single: include/merlin/buses/usart.h
+   single: include/merlin/buses/usb.h
+   single: include/merlin/io.h
 
-The objective is to keep all dynamic platform context in one object that is owned
-by the driver.
+The complete public API surface is exposed from ``include/merlin`` and can be
+split into four layers:
 
+.. list-table:: Merlin public API layers
+   :header-rows: 1
+   :widths: 25 35 40
 
-Minimal lifecycle contract
---------------------------
+   * - Header family
+     - Purpose
+     - Key symbols
+   * - ``platform/driver.h``
+     - Generic platform driver lifecycle and services
+     - ``struct platform_device_driver``, ``device_type_t``,
+       ``merlin_platform_driver_register()``,
+       ``merlin_platform_driver_map()``,
+       ``merlin_platform_driver_configure_gpio()``,
+       ``merlin_platform_driver_irq_displatch()``
+   * - ``platform/api/*.h``
+     - Unified user-facing API per bus class
+     - ``i2c_probe/init/read*/write*/release``,
+       ``spi_probe/init/xfer/release/set_cs``,
+       ``usart_probe/init/write/read/flush/release``
+   * - ``buses/*.h``
+     - Bus contracts and configuration enums/structures
+     - ``struct spi_config``, ``struct usart_config``,
+       I2C speed/addressing enums, USB endpoint operation callbacks
+   * - ``io.h`` + ``helpers.h``
+     - Architecture-neutral MMIO and polling helpers
+     - ``merlin_ioread*()``, ``merlin_iowrite*()``,
+       ``merlin_iopoll32_until_set()/until_clear()``, ``unlikely()``
 
-For a bus controller or platform-visible device, the expected lifecycle is:
+Driver object model
+-------------------
 
-1. Register with ``merlin_platform_driver_register()`` using the DTS label.
-2. Map with ``merlin_platform_driver_map()`` before touching MMIO.
-3. Configure pinmux/GPIO through ``merlin_platform_driver_configure_gpio()`` when needed.
-4. Run device operations (MMIO + protocol logic).
-5. Optionally acknowledge interrupts through ``merlin_platform_acknowledge_irq()``.
-6. Unmap with ``merlin_platform_driver_unmap()`` on release.
+.. index::
+   single: platform_device_driver
+   single: devinfo_t
+   single: sentry,label
+   single: sentry,owner
 
-The I2C example implements this sequence explicitly in
-``examples/i2c/i2c_bus_driver/i2c_bus_driver.c``.
+Every platform-backed driver is anchored by ``struct platform_device_driver``.
+At runtime, Merlin populates fields from generated DeviceTree metadata:
 
+- ``label``: matches ``sentry,label`` and is the primary runtime selector;
+- ``devinfo``: resolved metadata (base address, size, IRQs, pin data, and
+  backend-specific attributes);
+- ``devh``: kernel device handle bound at registration;
+- ``platform_fops.isr``: ISR callback entry used by centralized IRQ dispatch;
+- ``type``: backend discriminator (I2C, SPI, USART, USB, ...).
 
-I/O abstraction principle
--------------------------
+This keeps the platform context in one deterministic object owned by the
+driver instance.
 
-The MMIO accessors from ``include/merlin/io.h`` hide architecture-specific assembly
-through ``include/merlin/arch/asm-generic/io.h``.
+Lifecycle contract
+------------------
 
-As a result, driver code can stay architecture-independent and use:
+.. index::
+   single: probe
+   single: init
+   single: release
+   single: lifecycle
 
-- ``merlin_ioread8/16/32()`` and ``merlin_iowrite8/16/32()``
-- ``merlin_iopoll32_until_set()`` and ``merlin_iopoll32_until_clear()``
+Across I2C, SPI, USART, and USB sample drivers, the same lifecycle is used:
 
-This is the mechanism used by the I2C example to wait for controller flags
-(``TXIS``, ``RXNE``, ``STOPF``, ``BUSY``) without embedding architecture-specific
-instructions in the driver.
+1. ``*_probe(label)``
+   Register with Merlin and resolve DTS metadata ownership.
+2. ``*_init(...)``
+   Map MMIO, configure GPIO/pinctrl, initialize hardware state.
+3. Runtime operations
+   Execute transfers, endpoint I/O, or serial transactions.
+4. ``*_release(label)``
+   Disable hardware as needed and unmap resources.
 
+The API is intentionally strict: runtime operations should reject calls when
+probe/init has not completed or when labels do not match the registered
+instance.
 
-IRQ dispatch principle
-----------------------
+Error model
+-----------
 
-Merlin centralizes IRQ routing with ``merlin_platform_driver_irq_displatch()``:
+.. index::
+   single: drv_status_t
+   single: DRV_ERROR_TIMEOUT
+   single: DRV_ERROR_AGAIN
+   single: DRV_ERROR_CONFIGURATION
 
-- resolve the target driver from DTS-backed metadata,
-- find the registered runtime driver context,
-- call the driver ISR callback.
+``include/merlin/platform/api/generic.h`` defines ``drv_status_t`` as a common
+driver status space.
 
-A task handling multiple devices can therefore keep one event loop and let Merlin
-perform IRQ-to-driver routing.
+The sample drivers consistently use the following categories:
+
+- state errors: ``DRV_ERROR_INVSTATE``, ``DRV_ERROR_NOTREGISTERED``;
+- parameter errors: ``DRV_ERROR_INVPARAM``;
+- platform/setup errors: ``DRV_ERROR_CONFIGURATION``, ``DRV_ERROR_MAPFAILED``;
+- transfer/retry semantics: ``DRV_ERROR_TIMEOUT``, ``DRV_ERROR_AGAIN``;
+- capability mismatches: ``DRV_ERROR_UNSUPPORTED_CFG``, ``DRV_ERROR_UNSUPPORTED``.
+
+For robust upper layers, treat ``DRV_ERROR_AGAIN`` as a soft failure and most
+other errors as hard failures requiring reconfiguration or reset.
+
+MMIO and polling principles
+---------------------------
+
+.. index::
+   single: merlin_ioread32()
+   single: merlin_iowrite32()
+   single: merlin_iopoll32_until_set()
+   single: merlin_iopoll32_until_clear()
+
+All sample bus drivers use ``include/merlin/io.h`` for register access.
+
+Recommended pattern:
+
+- compute register addresses from ``devinfo->baseaddr`` and local offsets;
+- perform register reads/writes through ``merlin_ioread*`` and
+  ``merlin_iowrite*`` only;
+- gate hardware state transitions with bounded polls
+  (``merlin_iopoll32_until_set/clear``) and return timeout errors when limits
+  are reached.
+
+This keeps code portable across supported architectures while preserving
+deterministic behavior for bring-up and fault handling.
+
+IRQ routing principle
+---------------------
+
+.. index::
+   single: merlin_platform_driver_irq_displatch()
+   single: platform_fops.isr
+   single: event loop
+
+Merlin centralizes IRQ-to-driver routing through
+``merlin_platform_driver_irq_displatch(IRQn)``.
+
+In an application event loop, the task forwards the IRQ number to Merlin;
+Merlin then resolves the owning driver and calls the registered
+``platform_fops.isr`` callback for that instance.
+
+This allows one event loop to serve multiple drivers without duplicating
+IRQ-number-to-device lookup logic in each application.
+
+Portability rule from sample drivers
+------------------------------------
+
+The sample implementations export unified API symbols using aliasing, for
+example:
+
+.. code-block:: c
+
+   drv_status_t i2c_probe(uint32_t label)
+      __attribute__((alias("stm32_i2c_driver_probe")));
+
+This pattern decouples application code from vendor-specific function names.
+The same upper-layer binary contract can therefore target different concrete
+drivers as long as they expose Merlin's public API symbols.

@@ -19,17 +19,30 @@ py3 = pymod.find_installation(
     ]
 )
 
+concepts_img = files(
+    'concepts/_static/figures/camelot.png',
+    'concepts/_static/figures/merlin.png',
+    'concepts/_static/figures/schema_block.png',
+    'concepts/_static/figures/schema_sequence.png',
+)
+
 concepts_rst = files(
     'concepts/index.rst',
+    'concepts/concepts/index.rst',
+    'concepts/concepts/principles.rst',
+    'concepts/concepts/usage.rst',
     'concepts/build_system/index.rst',
     'concepts/build_system/targets.rst',
+    'concepts/build_system/dts.rst',
+    'concepts/write_drivers/index.rst',
+    'concepts/write_drivers/usart.rst',
     'concepts/tests/index.rst',
     'concepts/concepts/index.rst',
     'concepts/genindex.rst',
 )
 
 concepts = custom_target('doc-concepts',
-    input: concepts_rst,
+    input: [ concepts_rst, concepts_img ],
     depend_files: [files('concepts/conf.py')],
     output: 'concepts',
     install: true,

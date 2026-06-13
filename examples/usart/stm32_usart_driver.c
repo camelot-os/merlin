@@ -84,13 +84,13 @@
 
 #define USART_POLL_RETRIES  10000U
 
-static int stm32_usart_fops_configure(struct usart_driver *self,
-                                      const struct usart_config *config);
-static int stm32_usart_fops_write(struct usart_driver *self,
-                                  const uint8_t *wrbuf, size_t len);
-static int stm32_usart_fops_read(struct usart_driver *self,
-                                 uint8_t *rdbuf, size_t len);
-static int stm32_usart_fops_flush(struct usart_driver *self);
+static int stm32_usart_configure(struct usart_driver *self,
+                                 const struct usart_config *config);
+static int stm32_usart_write_bytes(struct usart_driver *self,
+                                   const uint8_t *wrbuf, size_t len);
+static int stm32_usart_read_bytes(struct usart_driver *self,
+                                  uint8_t *rdbuf, size_t len);
+static int stm32_usart_flush_tx(struct usart_driver *self);
 
 static int stm32_usart_isr(void *self, uint32_t IRQn);
 
@@ -288,8 +288,8 @@ static int stm32_usart_check_and_clear_rx_errors(struct usart_driver *drv)
  * @param config Desired USART configuration.
  * @return 0 on success, -1 on invalid parameters or hardware failure.
  */
-static int stm32_usart_fops_configure(struct usart_driver *self,
-                                      const struct usart_config *config)
+static int stm32_usart_configure(struct usart_driver *self,
+                                 const struct usart_config *config)
 {
     uint32_t cr1;
     uint32_t cr2;
@@ -420,8 +420,8 @@ static int stm32_usart_fops_configure(struct usart_driver *self,
  * @param len Number of bytes to transmit.
  * @return 0 on success, -1 on invalid parameters or hardware failure.
  */
-static int stm32_usart_fops_write(struct usart_driver *self,
-                                  const uint8_t *wrbuf, size_t len)
+static int stm32_usart_write_bytes(struct usart_driver *self,
+                                   const uint8_t *wrbuf, size_t len)
 {
     if (self == NULL || wrbuf == NULL || len == 0U) {
         return -1;
@@ -448,8 +448,8 @@ static int stm32_usart_fops_write(struct usart_driver *self,
  * @param len Number of bytes to read.
  * @return 0 on success, -1 on invalid parameters or hardware failure.
  */
-static int stm32_usart_fops_read(struct usart_driver *self,
-                                 uint8_t *rdbuf, size_t len)
+static int stm32_usart_read_bytes(struct usart_driver *self,
+                                  uint8_t *rdbuf, size_t len)
 {
     if (self == NULL || rdbuf == NULL || len == 0U) {
         return -1;
@@ -477,7 +477,7 @@ static int stm32_usart_fops_read(struct usart_driver *self,
  * @param self USART instance.
  * @return 0 on success, -1 on timeout or invalid state.
  */
-static int stm32_usart_fops_flush(struct usart_driver *self)
+static int stm32_usart_flush_tx(struct usart_driver *self)
 {
     if (self == NULL || !usart_is_ready(self)) {
         return -1;
@@ -604,7 +604,7 @@ drv_status_t stm32_usart_init(uint32_t label, const struct usart_config *cfg)
         return DRV_ERROR_CONFIGURATION;
     }
 
-    if (stm32_usart_fops_configure(drv, cfg) != 0) {
+    if (stm32_usart_configure(drv, cfg) != 0) {
         return DRV_ERROR_CONFIGURATION;
     }
 
@@ -627,7 +627,7 @@ drv_status_t stm32_usart_write(uint32_t label, const uint8_t data)
         return DRV_ERROR_INVSTATE;
     }
 
-    if (stm32_usart_fops_write(drv, &data, 1U) != 0) {
+    if (stm32_usart_write_bytes(drv, &data, 1U) != 0) {
         return DRV_ERROR_AGAIN;
     }
 
@@ -653,7 +653,7 @@ drv_status_t stm32_usart_read(uint32_t label, uint8_t *data)
         goto err;
     }
 
-    if (stm32_usart_fops_read(drv, data, 1U) != 0) {
+    if (stm32_usart_read_bytes(drv, data, 1U) != 0) {
         status = DRV_ERROR_AGAIN;
         goto err;
     }
@@ -676,7 +676,7 @@ drv_status_t stm32_usart_flush(uint32_t label)
         return DRV_ERROR_INVSTATE;
     }
 
-    if (stm32_usart_fops_flush(drv) != 0) {
+    if (stm32_usart_flush_tx(drv) != 0) {
         return DRV_ERROR_TIMEOUT;
     }
 

@@ -8,6 +8,9 @@ extensions = [
     'sphinx.ext.autosectionlabel',
 ]
 
+# Avoid duplicate label warnings when multiple files reuse the same section titles.
+autosectionlabel_prefix_document = True
+
 simplepdf_vars = {
     'primary': '#6299C4',
     'primary-opaque': '#6299C4',

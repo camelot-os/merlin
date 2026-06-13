@@ -11,6 +11,7 @@
 #include <stddef.h>
 
 #include <merlin/buses/usb.h>
+#include <merlin/platform/driver.h>
 
 
 typedef int (*usbotgfs_ioep_handler_t)(devh_t devh, size_t size, uint8_t ep);

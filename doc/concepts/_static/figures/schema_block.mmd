@@ -1,0 +1,16 @@
+flowchart TB
+    APP[Application]
+    DEV[Device Driver<br/>ILI2130]
+    BUS[I2C Bus Driver<br/>STM32 I2C Controller]
+    MERLIN[Merlin Framework<br/>Platform + Bus + IO Abstractions]
+    OS[Camelot-OS API + DTS Metadata]
+    HW[Hardware<br/>I2C Controller + I2C Device]
+
+    APP -->|Device-level API| DEV
+    DEV -->|i2c_bus_read/write| BUS
+    BUS -->|register map GPIO IRQ MMIO| MERLIN
+    MERLIN -->|Unified access| OS
+    OS --> HW
+
+    MERLIN -. hides non-portable details .-> APP
+    MERLIN -. hides non-portable details .-> DEV
