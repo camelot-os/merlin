@@ -51,6 +51,7 @@ struct my_spi_private {
 	struct spi_config cfg;
 	size_t base;
 	bool initialized;
+	bool loopback;
 };
 
 static struct my_spi_private my_spi_ctx;
@@ -135,6 +136,7 @@ static drv_status_t my_driver_init(uint32_t label, struct spi_config *config)
 	uint32_t cr2 = 0UL;
 	uint32_t busfreq_mhz = 0UL;
 	uint32_t bus_hz;
+	bool loopback;
 
 	if (config == NULL) {
 		return DRV_ERROR_INVPARAM;
@@ -161,6 +163,7 @@ static drv_status_t my_driver_init(uint32_t label, struct spi_config *config)
 	/** adding driver local configuration infos to platform driver private data */
 	my_spi_ctx.cfg = *config;
 	my_spi_ctx.initialized = true;
+	my_spi_ctx.loopback = false;
 	my_spi_driver.private_data = &my_spi_ctx;
 
 	if (config->word_size_bits == 16U) {
@@ -169,9 +172,13 @@ static drv_status_t my_driver_init(uint32_t label, struct spi_config *config)
 		return DRV_ERROR_UNSUPPORTED_CFG;
 	}
 
-	if (config->controller_mode == SPI_CONTROLLER_MODE_MASTER) {
+	loopback = (config->controller_mode == SPI_CONTROLLER_MODE_LOOPBACK);
+	if ((config->controller_mode == SPI_CONTROLLER_MODE_MASTER) || loopback) {
 		cr1 |= STM32_SPI_CR1_MSTR;
+	} else if (config->controller_mode != SPI_CONTROLLER_MODE_SLAVE) {
+		return DRV_ERROR_UNSUPPORTED_CFG;
 	}
+	my_spi_ctx.loopback = loopback;
 
 	if (config->cpol == SPI_CPOL_HIGH) {
 		cr1 |= STM32_SPI_CR1_CPOL;
@@ -201,6 +208,17 @@ static drv_status_t my_driver_init(uint32_t label, struct spi_config *config)
 			break;
 		default:
 			return DRV_ERROR_UNSUPPORTED_CFG;
+	}
+
+	if (loopback) {
+		/*
+		 * Loopback tests require simultaneous TX and RX paths.
+		 * Force the controller in 2-lines full-duplex mode.
+		 */
+		if (config->duplex_mode != SPI_DUPLEX_FULL) {
+			return DRV_ERROR_UNSUPPORTED_CFG;
+		}
+		cr1 &= ~(STM32_SPI_CR1_BIDIMODE | STM32_SPI_CR1_BIDIOE | STM32_SPI_CR1_RXONLY);
 	}
 
 	if (config->cs_management == SPI_CS_SOFTWARE) {
