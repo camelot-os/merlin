@@ -17,6 +17,7 @@
 
 #include <merlin/io.h>
 #include <merlin/helpers.h>
+#include <merlin/platform/api/usb.h>
 
 #include "usbotgfs_driver.h"
 
@@ -707,6 +708,397 @@ static int usbotgfs_isr(void *self, uint32_t IRQn)
         usbotgfs_write32(USB_GINTSTS_OFFSET, clear_mask);
     }
     return 0;
+}
+
+static drv_status_t usb_require_registered(uint32_t label)
+{
+    if (g_usbotgfs_driver.devinfo == NULL || g_usbotgfs_driver.label != label) {
+        return DRV_ERROR_NOTREGISTERED;
+    }
+
+    return DRV_STATUS_OK;
+}
+
+drv_status_t usb_probe(uint32_t label)
+{
+    if (g_usbotgfs_driver.devinfo != NULL) {
+        return DRV_ERROR_INVSTATE;
+    }
+
+    return (usbotgfs_probe(label) == 0) ? DRV_STATUS_OK : DRV_ERROR_NOTREGISTERED;
+}
+
+drv_status_t usb_init(uint32_t label, enum usb_otg_mode mode, enum usb_maximum_speed max_speed)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (mode != USB_OTG_MODE_DEVICE) {
+        return DRV_ERROR_UNSUPPORTED_CFG;
+    }
+    if (max_speed != USB_MAXIMUM_SPEED_FULL) {
+        return DRV_ERROR_UNSUPPORTED_CFG;
+    }
+
+    return (usbotgfs_init(mode, max_speed) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_release(uint32_t label)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+
+    if (g_mapped) {
+        if (merlin_platform_driver_unmap(&g_usbotgfs_driver) != STATUS_OK) {
+            return DRV_ERROR_CONFIGURATION;
+        }
+    }
+
+    g_initialized = false;
+    g_mapped = false;
+    g_global_stall = false;
+    g_port_speed = USBOTG_FS_PORT_SPEED_UNKNOWN;
+    g_usbotgfs_driver.devh = 0;
+    g_usbotgfs_driver.devinfo = NULL;
+    g_usbotgfs_driver.label = 0;
+    usbotgfs_reset_runtime_state();
+
+    return DRV_STATUS_OK;
+}
+
+drv_status_t usb_send_data(uint32_t label, uint8_t *src, uint32_t size, uint8_t ep)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if ((src == NULL && size != 0U) || (ep >= USBOTGFS_NUM_EPS)) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_send_data(src, size, ep) == 0) ? DRV_STATUS_OK : DRV_ERROR_AGAIN;
+}
+
+drv_status_t usb_set_recv_fifo(uint32_t label, uint8_t *dst, uint32_t size, uint8_t ep)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if ((dst == NULL && size != 0U) || (size > USB_DXEPTSIZ_XFRSIZ_MASK) || (ep >= USBOTGFS_NUM_EPS)) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_set_recv_fifo(dst, size, ep) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_send_zlp(uint32_t label, uint8_t ep)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (ep >= USBOTGFS_NUM_EPS) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_send_zlp(ep) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_global_stall(uint32_t label)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+
+    return (usbotgfs_global_stall() == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_global_stall_clear(uint32_t label)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+
+    return (usbotgfs_global_stall_clear() == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_endpoint_stall(uint32_t label, uint8_t ep_id, enum usb_endpoint_direction dir)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (ep_id >= USBOTGFS_NUM_EPS || dir == USB_ENDPOINT_DIR_UNKNOWN) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_endpoint_stall(ep_id, (usbotgfs_ep_dir_t)dir) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_endpoint_stall_clear(uint32_t label, uint8_t ep_id, enum usb_endpoint_direction dir)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (ep_id >= USBOTGFS_NUM_EPS || dir == USB_ENDPOINT_DIR_UNKNOWN) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_endpoint_stall_clear(ep_id, (usbotgfs_ep_dir_t)dir) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_endpoint_set_nak(uint32_t label, uint8_t ep_id, enum usb_endpoint_direction dir)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (ep_id >= USBOTGFS_NUM_EPS || dir == USB_ENDPOINT_DIR_UNKNOWN) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_endpoint_set_nak(ep_id, (usbotgfs_ep_dir_t)dir) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_endpoint_clear_nak(uint32_t label, uint8_t ep_id, enum usb_endpoint_direction dir)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (ep_id >= USBOTGFS_NUM_EPS || dir == USB_ENDPOINT_DIR_UNKNOWN) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_endpoint_clear_nak(ep_id, (usbotgfs_ep_dir_t)dir) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_configure_endpoint(uint32_t label,
+                        uint8_t ep,
+                        enum usb_endpoint_type type,
+                        enum usb_endpoint_direction dir,
+                        enum usb_endpoint_mpsize mpsize,
+                        enum usb_endpoint_toggle dtoggle,
+                        usb_ioep_handler_t handler)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (ep >= USBOTGFS_NUM_EPS || type == USB_ENDPOINT_TYPE_UNKNOWN || dir == USB_ENDPOINT_DIR_UNKNOWN) {
+        return DRV_ERROR_INVPARAM;
+    }
+    if (ep == 0U) {
+        if (mpsize != USB_ENDPOINT_MPSIZE_64BYTES && mpsize != USB_ENDPOINT_MPSIZE_128BYTES &&
+            mpsize != USB_ENDPOINT_MPSIZE_512BYTES && mpsize != USB_ENDPOINT_MPSIZE_1024BYTES) {
+            return DRV_ERROR_UNSUPPORTED_CFG;
+        }
+    } else if (mpsize != USB_ENDPOINT_MPSIZE_64BYTES && mpsize != USB_ENDPOINT_MPSIZE_128BYTES &&
+           mpsize != USB_ENDPOINT_MPSIZE_512BYTES && mpsize != USB_ENDPOINT_MPSIZE_1024BYTES) {
+        return DRV_ERROR_UNSUPPORTED_CFG;
+    }
+
+    return (usbotgfs_configure_endpoint(ep,
+                        (usbotgfs_ep_type_t)type,
+                        (usbotgfs_ep_dir_t)dir,
+                        (usbotgfs_epx_mpsize_t)mpsize,
+                        (usbotgfs_ep_toggle_t)dtoggle,
+                        handler) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_deconfigure_endpoint(uint32_t label, uint8_t ep)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (ep >= USBOTGFS_NUM_EPS) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_deconfigure_endpoint(ep) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_activate_endpoint(uint32_t label, uint8_t ep, enum usb_endpoint_direction dir)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (ep >= USBOTGFS_NUM_EPS || dir == USB_ENDPOINT_DIR_UNKNOWN) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_activate_endpoint(ep, (usbotgfs_ep_dir_t)dir) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_deactivate_endpoint(uint32_t label, uint8_t ep, enum usb_endpoint_direction dir)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (ep >= USBOTGFS_NUM_EPS || dir == USB_ENDPOINT_DIR_UNKNOWN) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    return (usbotgfs_deactivate_endpoint(ep, (usbotgfs_ep_dir_t)dir) == 0) ? DRV_STATUS_OK : DRV_ERROR_CONFIGURATION;
+}
+
+drv_status_t usb_set_address(uint32_t label, uint16_t addr)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (addr > 0x7FU) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    usbotgfs_set_address(addr);
+    return DRV_STATUS_OK;
+}
+
+drv_status_t usb_get_ep_state(uint32_t label, uint8_t epnum, enum usb_endpoint_direction dir,
+                     enum usb_endpoint_state *state)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (state == NULL || epnum >= USBOTGFS_NUM_EPS || dir == USB_ENDPOINT_DIR_UNKNOWN) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    *state = (enum usb_endpoint_state)usbotgfs_get_ep_state(epnum, (usbotgfs_ep_dir_t)dir);
+    return DRV_STATUS_OK;
+}
+
+drv_status_t usb_get_ep_mpsize(uint32_t label, enum usb_endpoint_type type, uint16_t *mpsize)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (mpsize == NULL || type == USB_ENDPOINT_TYPE_UNKNOWN) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    *mpsize = usbotgfs_get_ep_mpsize((usbotgfs_ep_type_t)type);
+    return DRV_STATUS_OK;
+}
+
+drv_status_t usb_get_speed(uint32_t label, enum usb_port_speed *speed)
+{
+    drv_status_t status;
+
+    status = usb_require_registered(label);
+    if (status != DRV_STATUS_OK) {
+        return status;
+    }
+    if (!g_initialized) {
+        return DRV_ERROR_INVSTATE;
+    }
+    if (speed == NULL) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    *speed = (enum usb_port_speed)usbotgfs_get_speed();
+    return DRV_STATUS_OK;
 }
 
 int usbotgfs_probe(uint32_t label)
