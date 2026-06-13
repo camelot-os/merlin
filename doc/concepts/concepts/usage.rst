@@ -1,125 +1,171 @@
-Using Merlin in a driver
-========================
+Using Merlin in Drivers
+=======================
 
 .. index::
    single: Merlin; usage
-   single: integration; driver flow
+   single: integration flow
 
-Typical integration flow
-------------------------
+This chapter describes the implementation flow used by the reference drivers in
+``examples/`` and translates it into reusable guidance for new drivers.
+
+Integration sequence
+--------------------
 
 .. index::
-   single: driver; startup sequence
    single: probe
    single: init
+   single: runtime
    single: release
 
-The examples in ``examples/i2c`` illustrate a two-layer integration:
+For all bus classes, use the following sequence:
 
-- a bus controller driver (STM32 I2C controller),
-- a peripheral driver using this bus (ILI2130 touch controller).
+1. ``probe``
+   Register one driver instance from its DTS label.
+2. ``init``
+   Map MMIO, configure pinmux/GPIO, and program controller defaults.
+3. runtime API
+   Execute transfers or endpoint operations with bounded polling and explicit
+   state/error handling.
+4. ``release``
+   Disable peripheral behavior and unmap resources.
 
-The recommended startup sequence is:
+Calling runtime operations before probe/init should fail fast with
+``DRV_ERROR_INVSTATE`` or ``DRV_ERROR_NOTREGISTERED``.
 
-1. Probe/register the bus driver from its DTS label.
-2. Initialize and map the bus controller.
-3. Probe and initialize the peripheral driver.
-4. Enter the task event loop and dispatch interrupts through Merlin.
+Bus controller pattern
+----------------------
 
+The sample bus drivers (I2C, SPI, USART, USB) share the same skeleton:
 
-Bus driver pattern (I2C)
-------------------------
+.. code-block:: c
 
-.. index::
-   single: merlin_platform_driver_register()
-   single: merlin_platform_driver_map()
-   single: merlin_platform_driver_configure_gpio()
-   single: merlin_platform_driver_unmap()
-   single: merlin_ioread32()
-   single: merlin_iowrite32()
-   single: DEVICE_TYPE_I2C
+   static struct platform_device_driver my_driver = {
+       .label = 0,
+       .compatible = "vendor,controller",
+       .type = DEVICE_TYPE_SPI, /* or I2C/USART/USB */
+       .platform_fops = {
+           .isr = my_isr,
+       },
+   };
 
-In ``examples/i2c/i2c_bus_driver/i2c_bus_driver.c``, the bus driver:
+   drv_status_t my_probe(uint32_t label)
+   {
+       if (merlin_platform_driver_register(&my_driver, label) != STATUS_OK) {
+           return DRV_ERROR_NOTREGISTERED;
+       }
+       return DRV_STATUS_OK;
+   }
 
-- declares a ``platform_device_driver`` with ``.type = DEVICE_TYPE_I2C``,
-- calls ``merlin_platform_driver_register(&my_i2c_driver, label)`` in probe,
-- maps the device with ``merlin_platform_driver_map()`` in init,
-- configures bus GPIOs with ``merlin_platform_driver_configure_gpio()``,
-- accesses controller registers via ``merlin_ioread*`` / ``merlin_iowrite*``,
-- unmaps on release with ``merlin_platform_driver_unmap()``.
+   drv_status_t my_init(...)
+   {
+       if (merlin_platform_driver_map(&my_driver) != STATUS_OK) {
+           return DRV_ERROR_MAPFAILED;
+       }
+       if (merlin_platform_driver_configure_gpio(&my_driver) != STATUS_OK) {
+           return DRV_ERROR_CONFIGURATION;
+       }
+       /* Controller-specific register programming */
+       return DRV_STATUS_OK;
+   }
 
-The register base is never hard-coded in the driver logic; it is read from
-``my_i2c_driver.devinfo->baseaddr`` (DTS-derived metadata).
+   drv_status_t my_release(uint32_t label)
+   {
+       (void)label;
+       if (merlin_platform_driver_unmap(&my_driver) != STATUS_OK) {
+           return DRV_ERROR_MAPFAILED;
+       }
+       return DRV_STATUS_OK;
+   }
 
+Key points from the examples:
 
-Peripheral driver pattern (I2C device)
---------------------------------------
+- register addresses are always derived from ``devinfo->baseaddr`` plus local
+  offsets;
+- MMIO is always done through ``merlin_ioread*``/``merlin_iowrite*``;
+- wait loops are bounded through ``merlin_iopoll32_until_set/clear``;
+- all error exits are explicit and mapped to ``drv_status_t``.
 
-.. index::
-   single: i2c_bus_read7()
-   single: i2c_bus_write7()
-   single: device driver; peripheral
+External device over a bus
+--------------------------
 
-In ``examples/i2c/i2c_device_driver/ili2130_driver.c``, the peripheral driver:
+The ILI2130 sample demonstrates the expected split between layers:
 
-- registers against Merlin using its own DTS label (``0x101`` in the sample),
-- configures reset/interrupt GPIO pinmux through Merlin,
-- communicates through the bus API (``i2c_bus_read7()``, ``i2c_bus_write7()``),
-- keeps protocol-level logic (chip-ID validation, polling/touch parsing) in
-  the device driver.
+- bus driver responsibility:
+  bus arbitration, START/STOP sequences, address mode handling, and controller
+  register logic;
+- external device driver responsibility:
+  register map semantics (chip ID check, touch packet parsing, power/gesture
+  programming), optionally plus dedicated GPIO behavior.
 
-This split is the core Merlin usage model: bus mechanics stay in the bus driver,
-functional behavior stays in the peripheral driver.
+An external device driver can retrieve parent bus association from metadata and
+use the unified bus API (for example ``i2c_read7()``/``i2c_write7()``) without
+directly manipulating bus-controller registers.
 
+Per-family notes from reference implementations
+------------------------------------------------
 
-Application-level sequence example
+I2C (``examples/i2c/i2c_bus_driver``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- validates addressing mode before each transfer path (7-bit vs 10-bit);
+- handles NACK/BERR/ARLO/OVR explicitly;
+- aborts in-flight transfer on failure and clears sticky flags;
+- returns retry-oriented status for transient bus busy conditions.
+
+SPI (``examples/spi/spi_bus_driver.c``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- uses ``spi_config`` as canonical input contract;
+- derives prescaler from bus clock queried through
+  ``merlin_platform_driver_get_bus_clock()``;
+- supports software chip-select path through ``spi_set_cs()``;
+- supports full-duplex and simplex transfer combinations with strict argument
+  validation.
+
+USART (``examples/usart/stm32_usart_driver.c``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- uses per-label instance slots to support multiple controllers;
+- configures BRR from parent bus frequency via Merlin API;
+- exposes both unified non-blocking API and optional blocking helper wrappers;
+- ISR entry resolves instance from the ``platform_device_driver`` pointer passed
+  by Merlin.
+
+USB OTG FS (``examples/usb/usbotgfs_driver.c``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- keeps endpoint runtime state in dedicated tables;
+- separates core reset/FIFO setup/interrupt mask configuration in independent
+  helper stages;
+- combines interrupt-driven completion with bounded polling helpers where
+  hardware ordering requires it.
+
+Application event loop integration
 ----------------------------------
 
-.. index::
-   single: merlin_platform_driver_irq_displatch()
-   single: merlin_platform_acknowledge_irq()
-   single: event loop
+Use one event loop and route IRQs through Merlin:
 
 .. code-block:: c
 
-   if (i2c_driver_probe(0x100) != 0) {
-       return -1;
-   }
-   if (i2c_driver_init(I2C_SPEED_FM_400K, I2C_ADDRESS_7B) != 0) {
-       return -1;
-   }
-
-   if (ilitech_2130_probe() != 0) {
-       return -1;
-   }
-   if (ilitech_2130_init() != 0) {
-       return -1;
+   while (1) {
+       /* wait_for_event(...) + event extraction */
+       if (event.type == EVENT_TYPE_IRQ) {
+           (void)merlin_platform_driver_irq_displatch(event.data[0]);
+       }
    }
 
-At runtime, when an interrupt event is received, dispatching is done through:
+This keeps IRQ routing centralized and avoids duplicating controller-specific
+IRQ lookup logic at application level.
 
-.. code-block:: c
+Driver authoring checklist
+--------------------------
 
-   (void)merlin_platform_driver_irq_displatch(IRQn);
+Before considering a new driver production-ready, verify:
 
-The matching driver ISR then acknowledges the interrupt with
-``merlin_platform_acknowledge_irq()`` after processing device-specific status.
-
-
-Implementation checklist
-------------------------
-
-.. index::
-   single: sentry,label
-   single: sentry,owner
-   single: compatible
-   single: driver; checklist
-
-For each new driver, verify the following points:
-
-- DTS node has a stable ``sentry,label`` and matching ``compatible``.
-- DTS node is owned by the task (``sentry,owner``).
-- Driver ``type`` matches the Merlin backend used for registration.
-- Probe performs registration before any map/MMIO access.
-- Init configures required GPIO/pinmux before first transfer.
-- Release unmaps the device and disables the active bus/IRQ sources.
+- DTS node exposes stable ``sentry,label`` and expected ``compatible``;
+- driver ``type`` matches the intended Merlin backend;
+- probe never performs MMIO before successful registration;
+- init performs map + GPIO setup before enabling traffic/interrupts;
+- runtime paths validate initialization state and parameters;
+- release path disables active controller behavior then unmaps;
+- exported public symbols match Merlin unified API names.

@@ -348,26 +348,20 @@ callbacks. These functions are the high-level application-facing API keyed by a 
 
 Typical instance lifecycle:
 
-1. ``usart_probe(label)``
-   - allocates a driver slot,
-   - initializes ``struct usart_driver`` (fops + platform metadata),
-   - registers the driver into Merlin through
-     ``merlin_platform_driver_register``.
-2. ``usart_init(label, &cfg)``
-   - maps the device (``merlin_platform_driver_map``),
-   - configures GPIOs (``merlin_platform_driver_configure_gpio``),
-   - applies ``struct usart_config`` through ``configure``.
-3. ``usart_write(label, byte)``
-   - application wrapper that delegates to ``write``.
-4. ``usart_read(label, &byte)``
-   - reads data already captured by the ISR,
-   - returns ``0`` when a byte is available, ``1`` otherwise.
-5. ``usart_flush(label)``
-   - waits for TX drain (``flush`` callback).
-6. ``usart_release(label)``
-   - disables the controller,
-   - unmaps through Merlin,
-   - frees the instance slot.
+1. ``usart_probe(label)`` allocates a driver slot, initializes
+   ``struct usart_driver`` (fops + platform metadata), then registers the
+   driver into Merlin through ``merlin_platform_driver_register``.
+2. ``usart_init(label, &cfg)`` maps the device
+   (``merlin_platform_driver_map``), configures GPIOs
+   (``merlin_platform_driver_configure_gpio``), then applies
+   ``struct usart_config`` through ``configure``.
+3. ``usart_write(label, byte)`` is an application wrapper that delegates to
+   ``write``.
+4. ``usart_read(label, &byte)`` reads data already captured by the ISR and
+   returns ``0`` when a byte is available, ``1`` otherwise.
+5. ``usart_flush(label)`` waits for TX drain (``flush`` callback).
+6. ``usart_release(label)`` disables the controller, unmaps it through
+   Merlin, then frees the instance slot.
 
 Practical note: in this example, RX is interrupt-driven.
 The ISR updates ``private_data`` (byte + flag), and the public ``read`` API
