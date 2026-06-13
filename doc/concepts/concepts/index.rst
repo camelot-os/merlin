@@ -19,4 +19,5 @@ Merlin-based drivers:
 
    principles.rst
    usage.rst
+   can.rst
    dts.rst

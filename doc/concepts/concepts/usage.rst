@@ -35,14 +35,14 @@ Calling runtime operations before probe/init should fail fast with
 Bus controller pattern
 ----------------------
 
-The sample bus drivers (I2C, SPI, USART, USB) share the same skeleton:
+The sample bus drivers (I2C, SPI, USART, CAN, USB) share the same skeleton:
 
 .. code-block:: c
 
    static struct platform_device_driver my_driver = {
        .label = 0,
        .compatible = "vendor,controller",
-       .type = DEVICE_TYPE_SPI, /* or I2C/USART/USB */
+      .type = DEVICE_TYPE_SPI, /* or I2C/USART/CAN/USB */
        .platform_fops = {
            .isr = my_isr,
        },
@@ -130,6 +130,15 @@ USART (``examples/usart/stm32_usart_driver.c``)
 - exposes both unified non-blocking API and optional blocking helper wrappers;
 - ISR entry resolves instance from the ``platform_device_driver`` pointer passed
   by Merlin.
+
+CAN (``examples/can/stm32u5_fdcan_driver.c``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- uses ``struct can_config`` and ``struct can_frame`` as stable contracts;
+- resolves parent bus clock through
+  ``merlin_platform_driver_get_bus_clock()`` for bitrate setup;
+- separates init-mode controller programming from runtime TX/RX operations;
+- returns retry-oriented status when TX FIFO/RX FIFO conditions are transient.
 
 USB OTG FS (``examples/usb/usbotgfs_driver.c``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
