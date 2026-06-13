@@ -84,67 +84,12 @@ struct usart_config {
 struct usart_driver;
 
 /**
- * @brief Configure the serial controller line parameters.
- *
- * @param self pointer to the usart_driver structure
- * @param config unified UART/USART line configuration
- *
- * @return 0 on success, negative error code on failure
- */
-typedef int (*usart_configure_fn_t)(struct usart_driver *self, const struct usart_config *config);
-
-/**
- * @brief Write bytes to the controller transmit path.
- *
- * @param self pointer to the usart_driver structure
- * @param wrbuf buffer containing bytes to transmit
- * @param len number of bytes to transmit
- *
- * @return 0 on success, negative error code on failure
- */
-typedef int (*usart_write_fn_t)(struct usart_driver *self, const uint8_t *wrbuf, size_t len);
-
-/**
- * @brief Read bytes from the controller receive path.
- *
- * @param self pointer to the usart_driver structure
- * @param rdbuf buffer used to store received bytes
- * @param len maximum number of bytes to receive
- *
- * @return 0 on success, negative error code on failure
- */
-typedef int (*usart_read_fn_t)(struct usart_driver *self, uint8_t *rdbuf, size_t len);
-
-/**
- * @brief Flush pending transmit data if the controller provides such an operation.
- *
- * @param self pointer to the usart_driver structure
- *
- * @return 0 on success, negative error code on failure
- */
-typedef int (*usart_flush_fn_t)(struct usart_driver *self);
-
-/**
- * @brief USART/UART specific operations exposed to Merlin.
- *
- * These callbacks describe the minimum common contract expected from a serial
- * controller driver registered in Merlin.
- */
-struct usart_bus_fops {
-	usart_configure_fn_t configure;
-	usart_write_fn_t write;
-	usart_read_fn_t read;
-	usart_flush_fn_t flush;
-};
-
-/**
  * @brief Unified UART/USART controller descriptor registered in Merlin.
  *
- * This structure does not implement the driver logic itself. It only binds the
- * serial-specific operations to the generic Merlin platform registration layer.
+ * Function prototypes are defined in merlin/platform/api/usart.h.
+ * This structure only stores per-instance runtime state for driver internals.
  */
 struct usart_driver {
-	struct usart_bus_fops *fops;
 	struct platform_device_driver platform;
 	void *private_data;
 };

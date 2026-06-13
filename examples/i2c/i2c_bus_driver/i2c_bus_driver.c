@@ -14,6 +14,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <merlin/buses/i2c.h>
+#include <merlin/platform/driver.h>
 #include <merlin/io.h>
 #include "i2c_bus_driver.h"
 
