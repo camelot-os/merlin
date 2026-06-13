@@ -15,11 +15,11 @@ struct touch_informations {
     uint8_t touch_id;
 };
 
-int ilitech_2130_probe(void);
-int ilitech_2130_init(void);
+int ilitech_2130_probe(uint32_t buslabel);
+int ilitech_2130_init(uint32_t buslabel);
 int ilitech_2130_isr(void *self, uint32_t IRQn);
-int ilitech_2130_sleep(void);
-int ilitech_2130_wake(void);
-int ilitech_2130_get_last_touch_info(struct touch_informations *touch_info);
+int ilitech_2130_sleep(uint32_t buslabel);
+int ilitech_2130_wake(uint32_t buslabel);
+int ilitech_2130_get_last_touch_info(uint32_t buslabel, struct touch_informations *touch_info);
 
 #endif /* ILI2130_DRIVER_H */

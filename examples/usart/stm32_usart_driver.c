@@ -94,18 +94,6 @@ static int stm32_usart_fops_flush(struct usart_driver *self);
 
 static int stm32_usart_isr(void *self, uint32_t IRQn);
 
-/*
- * Each slot is initialised at probe time. All instances share the same
- * fops table since the STM32 USART/UART IP is register-compatible across
- * all families.
- */
-static struct usart_bus_fops g_usart_fops = {
-    .configure = stm32_usart_fops_configure,
-    .write     = stm32_usart_fops_write,
-    .read      = stm32_usart_fops_read,
-    .flush     = stm32_usart_fops_flush,
-};
-
 static struct usart_driver g_usart_instances[STM32_USART_MAX_INSTANCES];
 static bool g_usart_slot_used[STM32_USART_MAX_INSTANCES];
 
@@ -135,16 +123,15 @@ static struct usart_driver *stm32_usart_instance_alloc(void)
         if (!g_usart_slot_used[i]) {
             struct usart_driver *drv = &g_usart_instances[i];
 
-            drv->fops                       = &g_usart_fops;
             drv->platform.devh              = 0;
             drv->platform.label             = 0UL;
             drv->platform.devinfo           = NULL;
             drv->platform.name              = "stm32 usart/uart driver";
             drv->platform.compatible        = "st,stm32-usart";
-            drv->platform.driver_fops       = &g_usart_fops;
             drv->platform.platform_fops.isr = stm32_usart_isr;
             drv->platform.type              = DEVICE_TYPE_USART;
-            drv->private_data               = NULL;
+            drv->platform.private_data       = NULL;
+            /* no driver specific, out of platform, fields in that example */
 
             g_usart_slot_used[i] = true;
             return drv;
@@ -579,20 +566,20 @@ static int stm32_usart_isr(void *self, uint32_t IRQn)
  * @param label DTS label of the target USART peripheral.
  * @return 0 on success, -1 on allocation or registration failure.
  */
-int stm32_usart_probe(uint32_t label)
+drv_status_t stm32_usart_probe(uint32_t label)
 {
     struct usart_driver *drv = stm32_usart_instance_alloc();
 
     if (drv == NULL) {
-        return -1;
+        return DRV_ERROR_INVSTATE;
     }
 
     if (merlin_platform_driver_register(&drv->platform, label) != STATUS_OK) {
         stm32_usart_instance_free(drv);
-        return -1;
+        return DRV_ERROR_NOTREGISTERED;
     }
 
-    return 0;
+    return DRV_STATUS_OK;
 }
 
 /**
@@ -601,23 +588,27 @@ int stm32_usart_probe(uint32_t label)
  * @param cfg Line configuration to apply.
  * @return 0 on success, -1 on failure.
  */
-int stm32_usart_init(uint32_t label, const struct usart_config *cfg)
+drv_status_t stm32_usart_init(uint32_t label, const struct usart_config *cfg)
 {
     struct usart_driver *drv = stm32_usart_instance_get(label);
 
     if (drv == NULL || cfg == NULL) {
-        return -1;
+        return DRV_ERROR_INVPARAM;
     }
 
     if (merlin_platform_driver_map(&drv->platform) != STATUS_OK) {
-        return -1;
+        return DRV_ERROR_CONFIGURATION;
     }
 
     if (merlin_platform_driver_configure_gpio(&drv->platform) != STATUS_OK) {
-        return -1;
+        return DRV_ERROR_CONFIGURATION;
     }
 
-    return stm32_usart_fops_configure(drv, cfg);
+    if (stm32_usart_fops_configure(drv, cfg) != 0) {
+        return DRV_ERROR_CONFIGURATION;
+    }
+
+    return DRV_STATUS_OK;
 }
 
 /**
@@ -627,33 +618,50 @@ int stm32_usart_init(uint32_t label, const struct usart_config *cfg)
  * @param len Number of bytes to transmit.
  * @return 0 on success, -1 on failure.
  */
-int stm32_usart_write(uint32_t label, const uint8_t *wrbuf, size_t len)
+drv_status_t stm32_usart_write(uint32_t label, const uint8_t data)
 {
     struct usart_driver *drv = stm32_usart_instance_get(label);
 
     if (drv == NULL) {
-        return -1;
+        return DRV_ERROR_INVSTATE;
     }
 
-    return stm32_usart_fops_write(drv, wrbuf, len);
+    if (stm32_usart_fops_write(drv, &data, 1U) != 0) {
+        return DRV_ERROR_AGAIN;
+    }
+
+    return DRV_STATUS_OK;
 }
 
 /**
  * @brief Public read API for a specific USART instance.
+ *
  * @param label DTS label of the target USART peripheral.
  * @param rdbuf Destination buffer.
  * @param len Number of bytes to read.
- * @return 0 on success, -1 on failure.
+ *
+ * @return DRV_STATUS_OK on success
+ * @return DRV_ERROR_INVSTATE if the driver instance is not initialised
+ * @return DRV_ERROR_INVPARAM if the provided parameters are invalid
+ * @return DRV_ERROR_EAGAIN if no byte received, but the operation can be retried later
  */
-int stm32_usart_read(uint32_t label, uint8_t *rdbuf, size_t len)
+drv_status_t stm32_usart_read(uint32_t label, uint8_t *data)
 {
+    drv_status_t status = DRV_ERROR_INVSTATE;
     struct usart_driver *drv = stm32_usart_instance_get(label);
 
-    if (drv == NULL) {
-        return -1;
+    if (drv == NULL || data == NULL) {
+        goto err;
     }
 
-    return stm32_usart_fops_read(drv, rdbuf, len);
+    if (stm32_usart_fops_read(drv, data, 1U) != 0) {
+        status = DRV_ERROR_AGAIN;
+        goto err;
+    }
+
+    status = DRV_STATUS_OK;
+err:
+    return status;
 }
 
 /**
@@ -661,15 +669,19 @@ int stm32_usart_read(uint32_t label, uint8_t *rdbuf, size_t len)
  * @param label DTS label of the target USART peripheral.
  * @return 0 on success, -1 on failure.
  */
-int stm32_usart_flush(uint32_t label)
+drv_status_t stm32_usart_flush(uint32_t label)
 {
     struct usart_driver *drv = stm32_usart_instance_get(label);
 
     if (drv == NULL) {
-        return -1;
+        return DRV_ERROR_INVSTATE;
     }
 
-    return stm32_usart_fops_flush(drv);
+    if (stm32_usart_fops_flush(drv) != 0) {
+        return DRV_ERROR_TIMEOUT;
+    }
+
+    return DRV_STATUS_OK;
 }
 
 /**
@@ -677,21 +689,75 @@ int stm32_usart_flush(uint32_t label)
  * @param label DTS label of the target USART peripheral.
  * @return 0 on success, -1 on failure.
  */
-int stm32_usart_release(uint32_t label)
+drv_status_t stm32_usart_release(uint32_t label)
 {
     struct usart_driver *drv = stm32_usart_instance_get(label);
 
     if (drv == NULL) {
-        return -1;
+        return DRV_ERROR_INVSTATE;
     }
 
     stm32_usart_disable(drv);
 
     if (merlin_platform_driver_unmap(&drv->platform) != STATUS_OK) {
-        return -1;
+        return DRV_ERROR_CONFIGURATION;
     }
 
     stm32_usart_instance_free(drv);
 
-    return 0;
+    return DRV_STATUS_OK;
 }
+
+drv_status_t stm32_usart_read_blocking(uint32_t label, uint8_t *rdbuf, size_t len)
+{
+    struct usart_driver *drv = stm32_usart_instance_get(label);
+
+    if (drv == NULL || rdbuf == NULL || len == 0U) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    for (size_t i = 0U; i < len; i++) {
+         if (stm32_usart_wait_rxne(drv) != 0) {
+             return DRV_ERROR_AGAIN;
+         }
+         if (stm32_usart_check_and_clear_rx_errors(drv) != 0) {
+             return DRV_ERROR_AGAIN;
+         }
+         rdbuf[i] = merlin_ioread8(usart_reg(drv, USART_RDR_OFFSET));
+    }
+
+    return DRV_STATUS_OK;
+}
+
+drv_status_t stm32_usart_write_blocking(uint32_t label, const uint8_t *wrbuf, size_t len)
+{
+    struct usart_driver *drv = stm32_usart_instance_get(label);
+
+    if (drv == NULL || wrbuf == NULL || len == 0U) {
+        return DRV_ERROR_INVPARAM;
+    }
+
+    for (size_t i = 0U; i < len; i++) {
+        if (stm32_usart_wait_txe(drv) != 0) {
+            return DRV_ERROR_AGAIN;
+        }
+        merlin_iowrite8(usart_reg(drv, USART_TDR_OFFSET), wrbuf[i]);
+    }
+
+    return DRV_STATUS_OK;
+}
+
+drv_status_t usart_probe(uint32_t label) __attribute__((alias("stm32_usart_probe")));
+drv_status_t usart_init(uint32_t label, const struct usart_config *cfg) __attribute__((alias("stm32_usart_init")));
+drv_status_t usart_write(uint32_t label, const uint8_t data) __attribute__((alias("stm32_usart_write")));
+drv_status_t usart_read(uint32_t label, uint8_t *data) __attribute__((alias("stm32_usart_read")));
+drv_status_t usart_flush(uint32_t label) __attribute__((alias("stm32_usart_flush")));
+drv_status_t usart_release(uint32_t label) __attribute__((alias("stm32_usart_release")));
+
+/* usart driver extension to generic API */
+drv_status_t usart_write_blocking(uint32_t label,
+                                  const uint8_t *wrbuf,
+                                  size_t len) __attribute__((alias("stm32_usart_write_blocking")));
+drv_status_t usart_read_blocking(uint32_t label,
+                                 uint8_t *rdbuf,
+                                 size_t len) __attribute__((alias("stm32_usart_read_blocking")));

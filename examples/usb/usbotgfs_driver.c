@@ -177,11 +177,11 @@ static struct platform_device_driver g_usbotgfs_driver = {
     .devinfo = NULL,
     .name = "stm32 usbotgfs minimal driver",
     .compatible = "st,stm32-otgfs",
-    .driver_fops = NULL,
     .platform_fops = {
         .isr = usbotgfs_isr,
     },
     .type = DEVICE_TYPE_USB,
+    .private_data = NULL,
 };
 
 static bool g_initialized;
