@@ -31,7 +31,7 @@
 drv_status_t i2c_probe(uint32_t label);
 
 /**
- * @brief initialize the I2C bus c ontroller.
+ * @brief initialize the I2C bus controller.
  *
  * This routine map the device in the application memory, and configure the
  * i2c bus controller to be ready to execute I2C transactions.
@@ -49,7 +49,7 @@ drv_status_t i2c_probe(uint32_t label);
 drv_status_t i2c_init(uint32_t label, enum i2c_speeds speed, enum i2c_address_mode mode);
 
 /**
- * @brief write data to a slave device on the I2C bus, using 7bits addressing mode
+ * @brief read data from a slave device on the I2C bus, using 7bits addressing mode
  *
  * This function execute a complete I2C transaction, including start condition, slave address,
  * register address, data and stop condition.
@@ -67,7 +67,7 @@ drv_status_t i2c_init(uint32_t label, enum i2c_speeds speed, enum i2c_address_mo
  * @return DRV_STATUS_OK on success
  * @return DRV_ERROR_INVSTATE if the driver instance is not initialised yet
  * @return DRV_ERROR_INVPARAM if the provided parameters are invalid
- * @return DRV_ERROR_EAGAIN if the transaction should be retried
+ * @return DRV_ERROR_AGAIN if the transaction should be retried
  */
 drv_status_t i2c_read7(uint32_t label, uint8_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length);
 
@@ -111,7 +111,7 @@ drv_status_t i2c_write7(uint32_t label, uint8_t slave_addr, uint8_t reg_addr, ui
  * @return DRV_STATUS_OK on success
  * @return DRV_ERROR_INVSTATE if the driver instance is not initialised yet
  * @return DRV_ERROR_INVPARAM if the provided parameters are invalid
- * @return DRV_ERROR_EAGAIN if the transaction should be retried
+ * @return DRV_ERROR_AGAIN if the transaction should be retried
  * @return DRV_ERROR_UNSUPPORTED if the device does not support 10bits addressing mode
  */
 drv_status_t i2c_read10(uint32_t label, uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length);
@@ -136,7 +136,7 @@ drv_status_t i2c_read10(uint32_t label, uint16_t slave_addr, uint8_t reg_addr, u
  * @return DRV_STATUS_OK on success
  * @return DRV_ERROR_INVSTATE if the driver instance is not initialised yet
  * @return DRV_ERROR_INVPARAM if the provided parameters are invalid
- * @return DRV_ERROR_EAGAIN if the transaction should be retried
+ * @return DRV_ERROR_AGAIN if the transaction should be retried
  * @return DRV_ERROR_UNSUPPORTED if the device does not support 10bits addressing mode
  */
 drv_status_t i2c_write10(uint32_t label, uint16_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length);

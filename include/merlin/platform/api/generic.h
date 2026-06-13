@@ -5,11 +5,11 @@
 #define MERLIN_PLATFORM_API_GENERIC_H
 
 /*
- * merlin-based drivers aim to be used in a portable way by hosting applications
- * In order to do that, we define in that header a set of types that aim to be
- * used by various drivers, on per device class, so that calling application is
- * able to substitute a given driver witn another one depending on the host platform,
- * yet without requiring code rewriting at application level.
+ * merlin-based drivers aim to be used in a portable way by hosting applications.
+ * To do that, we define in this header a set of types that can be reused by
+ * various drivers (per device class), so that calling applications are able to
+ * substitute one driver with another depending on the host platform,
+ * without requiring code rewriting at application level.
  */
 
  /**
@@ -26,7 +26,7 @@
   */
 typedef enum e_drv_status {
     DRV_STATUS_OK = 0, /**< Operation completed successfully */
-    DRV_ERROR_INVSTATE = 1, /**< driver state incomatible with call (e.g. probe or init not done) */
+    DRV_ERROR_INVSTATE = 1, /**< driver state incompatible with call (e.g. probe or init not done) */
     DRV_ERROR_INVPARAM = 2, /**< invalid parameter passed to the driver */
     DRV_ERROR_NOTREGISTERED = 3, /**< driver is not registered in the system */
     DRV_ERROR_CONFIGURATION = 4, /**< device configuration error (e.g. pinmux, clock, and so on) */

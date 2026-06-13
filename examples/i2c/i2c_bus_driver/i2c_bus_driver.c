@@ -226,45 +226,51 @@ static int stm32_i2c_bus_configure_transfer(uint16_t slave_addr, size_t nbytes,
 	return 0;
 }
 
-static int stm32_i2c_bus_write_internal(uint16_t slave_addr, uint8_t reg_addr,
+static drv_status_t stm32_i2c_bus_write_internal(uint16_t slave_addr, uint8_t reg_addr,
 	uint8_t *data, size_t length, enum i2c_address_mode mode)
 {
-	int res = -1;
+	drv_status_t status;
 
 	if (unlikely(length == 0U || length > (I2C_TRANSFER_MAX_NBYTES - 1U))) {
+		status = DRV_ERROR_INVPARAM;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_wait_until_idle() != 0) {
+		status = DRV_ERROR_AGAIN;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_configure_transfer(slave_addr, length + 1U, 0, 1, mode) != 0) {
+		status = DRV_ERROR_UNSUPPORTED_CFG;
 		goto end;
 	}
 
 	if (stm32_i2c_bus_wait_flag_set(I2C_ISR_TXIS) != 0 || stm32_i2c_bus_check_and_clear_errors() != 0) {
+		status = DRV_ERROR_TIMEOUT;
 		goto end;
 	}
 	merlin_iowrite8(GET_REG_ADDR(I2C_TXDR_OFFSET), reg_addr);
 
 	for (size_t idx = 0U; idx < length; idx++) {
 		if (stm32_i2c_bus_wait_flag_set(I2C_ISR_TXIS) != 0 || stm32_i2c_bus_check_and_clear_errors() != 0) {
+			status = DRV_ERROR_TIMEOUT;
 			goto end;
 		}
 		merlin_iowrite8(GET_REG_ADDR(I2C_TXDR_OFFSET), data[idx]);
 	}
 
 	if (stm32_i2c_bus_wait_for_stop() != 0) {
+		status = DRV_ERROR_TIMEOUT;
 		goto end;
 	}
 
-	res = 0;
+	status = DRV_STATUS_OK;
 end:
-	if (res != 0) {
+	if (status != DRV_STATUS_OK) {
 		stm32_i2c_bus_abort_transfer();
 	}
-	return res;
+	return status;
 }
 
 static void stm32_i2c_enable_interrupt(void)
@@ -297,7 +303,7 @@ static drv_status_t stm32_i2c_bus_write10(uint32_t label, uint16_t slave_addr, u
 {
 	/* label is ignored here has this driver only supports a single I2C bus, the one previously probed */
 	if (stm32_i2c_addr_mode != I2C_ADDRESS_10B) {
-		return -1;
+		return DRV_ERROR_CONFIGURATION;
 	}
 
 	return stm32_i2c_bus_write_internal(slave_addr, reg_addr, data, length, I2C_ADDRESS_10B);
@@ -437,7 +443,7 @@ end:
 	return res;
 }
 
-static void stm32_i2c_isr(uint32_t IRQn)
+static void stm32_i2c_isr(uint32_t IRQn __attribute__((unused)))
 {
 	uint32_t isr_val = merlin_ioread32(GET_REG_ADDR(I2C_ISR_OFFSET));
 	uint32_t clear_flags = 0;

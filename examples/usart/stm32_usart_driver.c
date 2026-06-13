@@ -635,27 +635,33 @@ drv_status_t stm32_usart_write(uint32_t label, const uint8_t data)
 
 /**
  * @brief Public read API for a specific USART instance.
+ *
  * @param label DTS label of the target USART peripheral.
  * @param rdbuf Destination buffer.
  * @param len Number of bytes to read.
- * @return 0 on success, -1 on failure.
+ *
+ * @return DRV_STATUS_OK on success
+ * @return DRV_ERROR_INVSTATE if the driver instance is not initialised
+ * @return DRV_ERROR_INVPARAM if the provided parameters are invalid
+ * @return DRV_ERROR_EAGAIN if no byte received, but the operation can be retried later
  */
-drv_status_t stm32_usart_read(uint32_t label, uint8_t data)
+drv_status_t stm32_usart_read(uint32_t label, uint8_t *data)
 {
-    uint8_t value;
+    drv_status_t status = DRV_ERROR_INVSTATE;
     struct usart_driver *drv = stm32_usart_instance_get(label);
 
-    (void)data;
-
-    if (drv == NULL) {
-        return DRV_ERROR_INVSTATE;
+    if (drv == NULL || data == NULL) {
+        goto err;
     }
 
-    if (stm32_usart_fops_read(drv, &value, 1U) != 0) {
-        return DRV_ERROR_AGAIN;
+    if (stm32_usart_fops_read(drv, data, 1U) != 0) {
+        status = DRV_ERROR_AGAIN;
+        goto err;
     }
 
-    return DRV_STATUS_OK;
+    status = DRV_STATUS_OK;
+err:
+    return status;
 }
 
 /**
@@ -744,7 +750,7 @@ drv_status_t stm32_usart_write_blocking(uint32_t label, const uint8_t *wrbuf, si
 drv_status_t usart_probe(uint32_t label) __attribute__((alias("stm32_usart_probe")));
 drv_status_t usart_init(uint32_t label, const struct usart_config *cfg) __attribute__((alias("stm32_usart_init")));
 drv_status_t usart_write(uint32_t label, const uint8_t data) __attribute__((alias("stm32_usart_write")));
-drv_status_t usart_read(uint32_t label, uint8_t data) __attribute__((alias("stm32_usart_read")));
+drv_status_t usart_read(uint32_t label, uint8_t *data) __attribute__((alias("stm32_usart_read")));
 drv_status_t usart_flush(uint32_t label) __attribute__((alias("stm32_usart_flush")));
 drv_status_t usart_release(uint32_t label) __attribute__((alias("stm32_usart_release")));
 

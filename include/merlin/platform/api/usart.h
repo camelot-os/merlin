@@ -69,11 +69,11 @@ drv_status_t usart_probe(uint32_t label);
 drv_status_t usart_init(uint32_t label, const struct usart_config *cfg);
 
 /**
- * @brief Transmit a byte buffer over a USART/UART TX path.
+ * @brief Transmit a byte over a USART/UART TX path.
  *
- * Depending on the driver implementation and the usage of interrupt, the driver may
- * support only a single byte transmission at a time, or it may support multiple bytes
- * transmission in a single call.
+ * Upper layer driver may implement a higher level function that transmits a buffer
+ * of bytes, but this function is the lowest level function that transmits a single
+ * byte over the TX path. This API is requested.
  *
  * Not that this function should, most of the time, not be a blocking call, as
  * the calling application may have an event loop that needs to be responsive.
@@ -85,7 +85,7 @@ drv_status_t usart_init(uint32_t label, const struct usart_config *cfg);
  * @return DRV_STATUS_OK on success
  * @return DRV_ERROR_INVSTATE if the driver instance is not initialised
  * @return DRV_ERROR_INVPARAM if the provided parameters are invalid
- * @return DRV_ERROR_EAGAIN if the transmission failed (e.g. previous
+ * @return DRV_ERROR_AGAIN if the transmission failed (e.g. previous
  *    transmission still in progress), but can be retried later
  */
 drv_status_t usart_write(uint32_t label, const uint8_t data);
@@ -103,9 +103,9 @@ drv_status_t usart_write(uint32_t label, const uint8_t data);
  * @return DRV_STATUS_OK on success
  * @return DRV_ERROR_INVSTATE if the driver instance is not initialised
  * @return DRV_ERROR_INVPARAM if the provided parameters are invalid
- * @return DRV_ERROR_EAGAIN no byte received, but the operation can be retried later
+ * @return DRV_ERROR_AGAIN no byte received, but the operation can be retried later
  */
-drv_status_t usart_read(uint32_t label, uint8_t data);
+drv_status_t usart_read(uint32_t label, uint8_t *data);
 
 /**
  * @brief Wait for all pending TX data to be shifted out.
@@ -115,7 +115,9 @@ drv_status_t usart_read(uint32_t label, uint8_t data);
  *
  * @param label DTS label identifying the controller instance
  *
- * @return 0 on success, -1 if the TC flag was not set in time
+ * @return DRV_STATUS_OK on success
+ * @return DRV_ERROR_INVSTATE if the driver instance is not initialised
+ * @return DRV_ERROR_TIMEOUT if the controller did not report TX complete in time
  */
 drv_status_t usart_flush(uint32_t label);
 
@@ -127,7 +129,9 @@ drv_status_t usart_flush(uint32_t label);
  *
  * @param label DTS label identifying the controller instance
  *
- * @return 0 on success, -1 on failure
+ * @return DRV_STATUS_OK on success
+ * @return DRV_ERROR_INVSTATE if the driver instance is not initialised
+ * @return DRV_ERROR_CONFIGURATION on unmap/teardown failure
  */
 drv_status_t usart_release(uint32_t label);
 
