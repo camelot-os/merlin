@@ -2,6 +2,10 @@
 // Copyright (c) 2026 H2Lab Development Team
 
 /*
+ * NOTE: This file is pseudo-code / documentation only. It is intentionally not
+ * valid C and is not part of any build target. It illustrates what a typical
+ * SPI bus driver using the Merlin platform driver model would look like.
+ *
  * a typical SPI bus driver then needs only the following in its source code:
  */
 #include <merlin/buses/spi.h>

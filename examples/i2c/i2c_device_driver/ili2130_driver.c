@@ -121,7 +121,9 @@ static int ilitech_2130_reset_with_configured_pinmux(struct platform_device_driv
 
 int ilitech_2130_probe(uint32_t buslabel)
 {
-    /* basic driver, here we used a single instance i2c bus controler driver, so bus label is not required */
+    /* basic driver, here we used a single instance i2c bus controller driver. The bus label is
+     * forwarded to the unified i2c_*() API calls and must be valid even if the underlying example
+     * bus driver ignores it (single-bus implementation). */
     int res = -1;
     /* first register against merlin, that do probe against the task DTS */
     if (unlikely(merlin_platform_driver_register(&ili2130_driver, 0x101) != STATUS_OK)) {

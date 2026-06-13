@@ -236,6 +236,11 @@ static drv_status_t stm32_i2c_bus_write_internal(uint16_t slave_addr, uint8_t re
 		goto end;
 	}
 
+	if (unlikely(data == NULL)) {
+		status = DRV_ERROR_INVPARAM;
+		goto end;
+	}
+
 	if (stm32_i2c_bus_wait_until_idle() != 0) {
 		status = DRV_ERROR_AGAIN;
 		goto end;

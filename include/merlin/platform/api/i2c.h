@@ -60,9 +60,9 @@ drv_status_t i2c_init(uint32_t label, enum i2c_speeds speed, enum i2c_address_mo
  *
  * @param label device label as set in the dts using sentry,label attribute
  * @param slave_addr 7bits slave address of the target device
- * @param reg_addr register address to write to
- * @param data buffer containing the data to be written
- * @param length number of bytes to write, must be between 1 and 255
+ * @param reg_addr register address to read from
+ * @param data buffer to be filled with the data read from the slave device
+ * @param length number of bytes to read, must be between 1 and 255
  *
  * @return DRV_STATUS_OK on success
  * @return DRV_ERROR_INVSTATE if the driver instance is not initialised yet
@@ -87,6 +87,11 @@ drv_status_t i2c_read7(uint32_t label, uint8_t slave_addr, uint8_t reg_addr, uin
  * @param reg_addr register address to write to
  * @param data buffer containing the data to be written
  * @param length number of bytes to write, must be between 1 and 255
+ *
+ * @return DRV_STATUS_OK on success
+ * @return DRV_ERROR_INVSTATE if the driver instance is not initialised yet
+ * @return DRV_ERROR_INVPARAM if the provided parameters are invalid
+ * @return DRV_ERROR_AGAIN if the transaction should be retried
  */
 drv_status_t i2c_write7(uint32_t label, uint8_t slave_addr, uint8_t reg_addr, uint8_t *data, size_t length);
 
