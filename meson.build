@@ -88,10 +88,55 @@ if with_doc_opt
     subdir('doc')
 endif
 
+with_rust_opt = get_option('with_rust')
+if with_rust_opt
+    py3 = import('python').find_installation('python3', required: true)
+    cargo = find_program('cargo', required: true)
+
+    rust_dir = meson.current_source_dir() / 'rust'
+    rust_target = 'thumbv8m.main-none-eabi'
+
+    dts_include_dirs = []
+    foreach d: get_option('dts-include-dirs')
+        d = fs.expanduser(d)
+        if not fs.is_absolute(d)
+            d = meson.global_source_root() / d
+        endif
+        dts_include_dirs += [d]
+    endforeach
+
+    rust_env = environment()
+    rust_env.set('MERLIN_DTS', dts_in.full_path())
+    rust_env.set('MERLIN_DTS2SRC', dts2src.full_path())
+    rust_env.set('MERLIN_DTS_INCLUDE_DIRS', ':'.join(dts_include_dirs))
+    rust_env.set('MERLIN_CONFIG_TASK_LABEL', '0x0')
+
+    rust_build_cmd = '''
+import os
+import pathlib
+import subprocess
+import sys
+
+rust_dir, cargo, rust_target, stamp = sys.argv[1:5]
+subprocess.check_call([cargo, "build", "--target", rust_target], cwd=rust_dir, env=os.environ.copy())
+pathlib.Path(stamp).touch()
+'''
+
+    custom_target('rust-crate',
+        output: 'rust-crate.stamp',
+        input: [ dts_in ],
+        command: [ py3, '-c', rust_build_cmd, rust_dir, cargo.full_path(), rust_target, '@OUTPUT@' ],
+        env: rust_env,
+        build_by_default: true,
+        console: true,
+    )
+endif
+
 summary(
     {
         'examples': with_examples_opt,
         'doc' : with_doc_opt,
+        'rust' : with_rust_opt,
     },
     bool_yn: true,
     section: 'Targets',
