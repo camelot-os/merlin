@@ -1,7 +1,14 @@
 #![no_std]
 
-use core::ptr::{read_volatile, write_volatile};
+//! STM32F4 USART driver example using only `camelot-merlin` and `sentry-uapi`.
+//!
+//! This example shows a typical lifecycle:
+//! 1. register the device with a DTS label,
+//! 2. map and configure hardware,
+//! 3. transmit bytes,
+//! 4. flush and release.
 
+use camelot_merlin::io::{iopoll32_until_set, ioread, iowrite};
 use camelot_merlin::platform::Merlin;
 use camelot_merlin::types::{DeviceType, PlatformDeviceDriver};
 use sentry_uapi::systypes::Status;
@@ -44,7 +51,7 @@ const USART_ICR_TCCF: u32 = 1 << 6;
 
 const USART_ERROR_MASK: u32 = USART_ISR_ORE | USART_ISR_NE | USART_ISR_FE | USART_ISR_PE;
 const USART_ERROR_CLEAR: u32 = USART_ICR_ORECF | USART_ICR_NECF | USART_ICR_FECF | USART_ICR_PECF;
-const USART_POLL_RETRIES: usize = 10_000;
+const USART_POLL_RETRIES: u32 = 10_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UsartWordLength {
@@ -96,6 +103,7 @@ pub struct Stm32f4UsartDriver {
 }
 
 impl Stm32f4UsartDriver {
+    /// Creates an unprobed USART driver instance.
     pub const fn new() -> Self {
         Self {
             platform: PlatformDeviceDriver::new("stm32f4-usart", DeviceType::Usart),
@@ -104,6 +112,7 @@ impl Stm32f4UsartDriver {
         }
     }
 
+    /// Registers the USART device using a DTS label.
     pub fn probe<const MAX_DRIVERS: usize>(
         &mut self,
         merlin: &mut Merlin<MAX_DRIVERS>,
@@ -112,6 +121,9 @@ impl Stm32f4UsartDriver {
         merlin.driver_register(&mut self.platform, label)
     }
 
+    /// Maps and configures the USART hardware according to `config`.
+    ///
+    /// The driver must be successfully probed before calling this method.
     pub fn init<const MAX_DRIVERS: usize>(
         &mut self,
         merlin: &Merlin<MAX_DRIVERS>,
@@ -144,6 +156,7 @@ impl Stm32f4UsartDriver {
         Status::Ok
     }
 
+    /// Disables USART and unmaps the device.
     pub fn release<const MAX_DRIVERS: usize>(&mut self, merlin: &Merlin<MAX_DRIVERS>) -> Status {
         if !self.initialized {
             return Status::NoEntity;
@@ -156,23 +169,29 @@ impl Stm32f4UsartDriver {
         merlin.driver_unmap(&self.platform)
     }
 
+    /// Writes one byte in blocking mode.
     pub fn write_byte(&self, data: u8) -> Status {
         if !self.initialized {
             return Status::NoEntity;
         }
-        if self.poll_until_set(USART_ISR_OFFSET, USART_ISR_TXE) != Status::Ok {
+        if iopoll32_until_set(self.reg_addr(USART_ISR_OFFSET), USART_ISR_TXE, USART_POLL_RETRIES)
+            != Status::Ok
+        {
             return Status::Busy;
         }
 
-        self.write_reg(USART_TDR_OFFSET, u32::from(data));
+        iowrite(self.reg_addr(USART_TDR_OFFSET), u32::from(data));
         Status::Ok
     }
 
+    /// Reads one byte in blocking mode.
     pub fn read_byte(&self) -> Result<u8, Status> {
         if !self.initialized {
             return Err(Status::NoEntity);
         }
-        if self.poll_until_set(USART_ISR_OFFSET, USART_ISR_RXNE) != Status::Ok {
+        if iopoll32_until_set(self.reg_addr(USART_ISR_OFFSET), USART_ISR_RXNE, USART_POLL_RETRIES)
+            != Status::Ok
+        {
             return Err(Status::Busy);
         }
 
@@ -180,9 +199,10 @@ impl Stm32f4UsartDriver {
             return Err(Status::Busy);
         }
 
-        Ok((self.read_reg(USART_RDR_OFFSET) & 0xff) as u8)
+        Ok((ioread(self.reg_addr(USART_RDR_OFFSET)) & 0xff) as u8)
     }
 
+    /// Writes a full byte slice in blocking mode.
     pub fn write_blocking(&self, bytes: &[u8]) -> Status {
         if bytes.is_empty() {
             return Status::Invalid;
@@ -197,15 +217,18 @@ impl Stm32f4UsartDriver {
         Status::Ok
     }
 
+    /// Waits for transfer completion and clears TC.
     pub fn flush(&self) -> Status {
         if !self.initialized {
             return Status::NoEntity;
         }
 
-        if self.poll_until_set(USART_ISR_OFFSET, USART_ISR_TC) != Status::Ok {
+        if iopoll32_until_set(self.reg_addr(USART_ISR_OFFSET), USART_ISR_TC, USART_POLL_RETRIES)
+            != Status::Ok
+        {
             return Status::Busy;
         }
-        self.write_reg(USART_ICR_OFFSET, USART_ICR_TCCF);
+        iowrite(self.reg_addr(USART_ICR_OFFSET), USART_ICR_TCCF);
         Status::Ok
     }
 
@@ -230,9 +253,9 @@ impl Stm32f4UsartDriver {
             return Status::Invalid;
         }
 
-        self.write_reg(USART_BRR_OFFSET, brr as u32);
+        iowrite(self.reg_addr(USART_BRR_OFFSET), brr as u32);
 
-        let mut cr1 = self.read_reg(USART_CR1_OFFSET);
+        let mut cr1: u32 = ioread(self.reg_addr(USART_CR1_OFFSET));
         cr1 &= !(USART_CR1_M0 | USART_CR1_M1 | USART_CR1_PCE | USART_CR1_PS | USART_CR1_TE | USART_CR1_RE);
 
         match config.word_length {
@@ -254,65 +277,50 @@ impl Stm32f4UsartDriver {
             cr1 |= USART_CR1_RE;
         }
 
-        self.write_reg(USART_CR1_OFFSET, cr1);
+        iowrite(self.reg_addr(USART_CR1_OFFSET), cr1);
 
-        let mut cr2 = self.read_reg(USART_CR2_OFFSET);
+        let mut cr2: u32 = ioread(self.reg_addr(USART_CR2_OFFSET));
         cr2 &= !USART_CR2_STOP_MASK;
         cr2 |= match config.stop_bits {
             UsartStopBits::One => USART_CR2_STOP_1,
             UsartStopBits::Two => USART_CR2_STOP_2,
         };
-        self.write_reg(USART_CR2_OFFSET, cr2);
+        iowrite(self.reg_addr(USART_CR2_OFFSET), cr2);
 
-        self.write_reg(USART_CR3_OFFSET, self.read_reg(USART_CR3_OFFSET));
+        iowrite(
+            self.reg_addr(USART_CR3_OFFSET),
+            ioread(self.reg_addr(USART_CR3_OFFSET)),
+        );
         self.enable();
 
         Status::Ok
     }
 
     fn clear_rx_errors(&self) -> Status {
-        let isr = self.read_reg(USART_ISR_OFFSET);
+        let isr: u32 = ioread(self.reg_addr(USART_ISR_OFFSET));
         if (isr & USART_ERROR_MASK) != 0 {
-            self.write_reg(USART_ICR_OFFSET, USART_ERROR_CLEAR);
+            iowrite(self.reg_addr(USART_ICR_OFFSET), USART_ERROR_CLEAR);
             return Status::Busy;
         }
         Status::Ok
     }
 
-    fn poll_until_set(&self, offset: usize, mask: u32) -> Status {
-        for _ in 0..USART_POLL_RETRIES {
-            if (self.read_reg(offset) & mask) != 0 {
-                return Status::Ok;
-            }
-        }
-        Status::Busy
-    }
-
     fn enable(&self) {
-        let cr1 = self.read_reg(USART_CR1_OFFSET) | USART_CR1_UE;
-        self.write_reg(USART_CR1_OFFSET, cr1);
+        let cr1: u32 = ioread(self.reg_addr(USART_CR1_OFFSET));
+        iowrite(self.reg_addr(USART_CR1_OFFSET), cr1 | USART_CR1_UE);
     }
 
     fn disable(&self) {
-        let cr1 = self.read_reg(USART_CR1_OFFSET) & !USART_CR1_UE;
-        self.write_reg(USART_CR1_OFFSET, cr1);
+        let cr1: u32 = ioread(self.reg_addr(USART_CR1_OFFSET));
+        iowrite(self.reg_addr(USART_CR1_OFFSET), cr1 & !USART_CR1_UE);
     }
 
-    fn read_reg(&self, offset: usize) -> u32 {
-        // SAFETY: base address is configured from DTS metadata after successful map.
-        unsafe { read_volatile(self.reg_ptr(offset) as *const u32) }
-    }
-
-    fn write_reg(&self, offset: usize, value: u32) {
-        // SAFETY: base address is configured from DTS metadata after successful map.
-        unsafe { write_volatile(self.reg_ptr(offset), value) }
-    }
-
-    fn reg_ptr(&self, offset: usize) -> *mut u32 {
-        (self.baseaddr + offset) as *mut u32
+    fn reg_addr(&self, offset: usize) -> usize {
+        self.baseaddr + offset
     }
 }
 
+/// Convenience function that sends a greeting over USART.
 pub fn usart_write_hello<const MAX_DRIVERS: usize>(
     merlin: &mut Merlin<MAX_DRIVERS>,
     label: u32,
@@ -329,15 +337,15 @@ pub fn usart_write_hello<const MAX_DRIVERS: usize>(
         return status;
     }
 
-    let status = driver.write_blocking(b"Hello from Rust USART over Merlin\r\n");
-    if status != Status::Ok {
-        return status;
+    let mut result = driver.write_blocking(b"Hello from Rust USART over Merlin\r\n");
+    if result == Status::Ok {
+        result = driver.flush();
     }
 
-    let status = driver.flush();
-    if status != Status::Ok {
-        return status;
+    let release_status = driver.release(merlin);
+    if result == Status::Ok {
+        release_status
+    } else {
+        result
     }
-
-    driver.release(merlin)
 }

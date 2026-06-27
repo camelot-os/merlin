@@ -25,6 +25,10 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Default for Merlin<MAX_REGISTERED_DRIV
 }
 
 impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
+    /// Creates an empty Merlin runtime context.
+    ///
+    /// `MAX_REGISTERED_DRIVERS` defines the maximum number of drivers that can
+    /// be registered in this context.
     pub const fn new() -> Self {
         Self {
             registered_drivers: [None; MAX_REGISTERED_DRIVERS],
@@ -32,6 +36,15 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
         }
     }
 
+    /// Registers a platform driver from its DTS label.
+    ///
+    /// On success, the driver is populated with the kernel device handle and
+    /// static device metadata.
+    ///
+    /// Returns:
+    /// - `Status::Ok` on success
+    /// - `Status::Busy` when the runtime registration table is full
+    /// - `Status::Invalid` when label lookup or handle retrieval fails
     pub fn driver_register(&mut self, driver: &mut PlatformDeviceDriver, label: u32) -> Status {
         if self.num_registered_drivers >= MAX_REGISTERED_DRIVERS {
             return Status::Busy;
@@ -57,14 +70,19 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
         Status::Ok
     }
 
+    /// Maps the device memory region for a registered driver.
     pub fn driver_map(&self, driver: &PlatformDeviceDriver) -> Status {
         syscall::map_dev(driver.devh)
     }
 
+    /// Unmaps the device memory region previously mapped for a driver.
     pub fn driver_unmap(&self, driver: &PlatformDeviceDriver) -> Status {
         syscall::unmap_dev(driver.devh)
     }
 
+    /// Configures GPIOs declared in the driver's DTS metadata.
+    ///
+    /// Returns `Status::NoEntity` if no metadata is attached to the driver.
     pub fn driver_configure_gpio(&self, driver: &PlatformDeviceDriver) -> Status {
         let Some(devinfo) = driver.devinfo else {
             return Status::NoEntity;
@@ -85,6 +103,9 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
         Status::Ok
     }
 
+    /// Enables all interrupts declared in the driver's DTS metadata.
+    ///
+    /// Returns `Status::NoEntity` when no IRQ is available for that device.
     pub fn driver_enable_irqs(&self, driver: &PlatformDeviceDriver) -> Status {
         let Some(devinfo) = driver.devinfo else {
             return Status::NoEntity;
@@ -107,6 +128,9 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
         Status::Ok
     }
 
+    /// Disables all interrupts declared in the driver's DTS metadata.
+    ///
+    /// Returns `Status::NoEntity` when no IRQ is available for that device.
     pub fn driver_disable_irqs(&self, driver: &PlatformDeviceDriver) -> Status {
         let Some(devinfo) = driver.devinfo else {
             return Status::NoEntity;
@@ -129,6 +153,10 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
         Status::Ok
     }
 
+    /// Returns bus clock frequency in MHz for bus-backed drivers.
+    ///
+    /// Valid for I2C/SPI/USART/CAN. Returns `Status::Invalid` for unsupported
+    /// kinds or unknown labels.
     pub fn driver_get_bus_clock(&self, driver: &PlatformDeviceDriver) -> Result<u32, Status> {
         match driver.kind {
             DeviceType::I2c | DeviceType::Spi | DeviceType::Usart | DeviceType::Can => {
@@ -138,6 +166,10 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
         }
     }
 
+    /// Dispatches a raised IRQ to the matching registered driver ISR.
+    ///
+    /// If an ISR callback is installed, it is called before IRQ acknowledge and
+    /// re-enable operations.
     pub fn irq_dispatch(&mut self, irqn: u32) -> Status {
         let Some(driver) = self.find_driver_from_irq(irqn) else {
             return Status::Invalid;

@@ -4,6 +4,13 @@ use crate::types::{DeviceType, UsbMaximumSpeed};
 
 include!(concat!(env!("OUT_DIR"), "/dts_generated.rs"));
 
+/// Returns the device metadata matching a Merlin device kind and DTS label.
+///
+/// The returned reference points to static metadata generated at build time
+/// from the DTS backend.
+///
+/// Returns `None` when the label is unknown for the requested kind or when the
+/// kind has no DTS-backed metadata (for example `DeviceType::Ext`).
 pub fn lookup_devinfo(kind: DeviceType, label: u32) -> Option<&'static crate::types::DevInfo> {
     match kind {
         DeviceType::I2c => I2C_DEVICES
@@ -30,6 +37,9 @@ pub fn lookup_devinfo(kind: DeviceType, label: u32) -> Option<&'static crate::ty
     }
 }
 
+/// Returns the input bus clock frequency in MHz for a labeled bus-backed device.
+///
+/// Supported kinds are I2C, SPI, USART and CAN. USB and EXT return `None`.
 pub fn bus_clock_mhz(kind: DeviceType, label: u32) -> Option<u32> {
     match kind {
         DeviceType::I2c => I2C_DEVICES
@@ -52,6 +62,7 @@ pub fn bus_clock_mhz(kind: DeviceType, label: u32) -> Option<u32> {
     }
 }
 
+/// Returns the maximum USB speed declared for the given USB device label.
 pub fn usb_maximum_speed(label: u32) -> Option<UsbMaximumSpeed> {
     USB_DEVICES
         .iter()
@@ -59,6 +70,10 @@ pub fn usb_maximum_speed(label: u32) -> Option<UsbMaximumSpeed> {
         .map(|dev| UsbMaximumSpeed::from(dev.maximum_speed))
 }
 
+/// Returns I2C child device metadata associated with an I2C controller label.
+///
+/// The slice length is clamped to the generated child array capacity to remain
+/// robust even if DTS metadata and compile-time limits diverge.
 pub fn i2c_child_devices(label: u32) -> Option<&'static [crate::types::DevInfo]> {
     I2C_DEVICES
         .iter()

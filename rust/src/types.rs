@@ -2,10 +2,14 @@ use core::ptr::NonNull;
 
 use sentry_uapi::systypes::DeviceHandle;
 
+/// Maximum number of interrupts stored in generated static metadata.
 pub const MAX_IRQS: usize = 8;
+/// Maximum number of GPIO/IO descriptors stored in generated metadata.
 pub const MAX_IOS: usize = 8;
+/// Maximum number of child devices attached to a generated I2C controller.
 pub const MAX_I2C_CHILDREN: usize = 4;
 
+/// Merlin-supported platform device families.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeviceType {
     I2c = 1,
@@ -16,12 +20,14 @@ pub enum DeviceType {
     Ext = 6,
 }
 
+/// Interrupt metadata associated with a device.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ItInfo {
     pub it_controller: u32,
     pub it_num: u32,
 }
 
+/// GPIO/IO metadata associated with a device.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DevIo {
     pub port: u32,
@@ -33,6 +39,7 @@ pub struct DevIo {
     pub pupdr: u32,
 }
 
+/// Core device metadata generated from DTS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DevInfo {
     pub id: u32,
@@ -59,6 +66,7 @@ impl Default for DevInfo {
 }
 
 impl DevInfo {
+    /// Returns `true` when `irqn` is present in this device interrupt table.
     pub fn contains_irq(self, irqn: u32) -> bool {
         self.its
             .iter()
@@ -67,6 +75,7 @@ impl DevInfo {
     }
 }
 
+/// USB speed capability as declared in DTS metadata.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UsbMaximumSpeed {
     LowSpeed = 0,
@@ -88,6 +97,7 @@ impl From<u32> for UsbMaximumSpeed {
     }
 }
 
+/// Generated metadata record for an I2C controller and its children.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct I2cDeviceInfo {
     pub devinfo: DevInfo,
@@ -96,37 +106,44 @@ pub struct I2cDeviceInfo {
     pub bus_input_clock_freq: u32,
 }
 
+/// Generated metadata record for a SPI controller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SpiDeviceInfo {
     pub devinfo: DevInfo,
     pub bus_input_clock_freq: u32,
 }
 
+/// Generated metadata record for a USART controller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UsartDeviceInfo {
     pub devinfo: DevInfo,
     pub bus_input_clock_freq: u32,
 }
 
+/// Generated metadata record for a CAN controller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CanDeviceInfo {
     pub devinfo: DevInfo,
     pub bus_input_clock_freq: u32,
 }
 
+/// Generated metadata record for a USB controller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UsbDeviceInfo {
     pub devinfo: DevInfo,
     pub maximum_speed: u32,
 }
 
+/// Interrupt service routine callback prototype for platform drivers.
 pub type PlatformIsrFn = fn(&mut PlatformDeviceDriver, u32) -> i32;
 
+/// Optional callbacks attached to a platform driver.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PlatformFops {
     pub isr: Option<PlatformIsrFn>,
 }
 
+/// Runtime state for one registered platform driver.
 #[derive(Debug)]
 pub struct PlatformDeviceDriver {
     pub devh: DeviceHandle,
@@ -139,6 +156,10 @@ pub struct PlatformDeviceDriver {
 }
 
 impl PlatformDeviceDriver {
+    /// Creates a new platform driver descriptor.
+    ///
+    /// Runtime fields (`devh`, `label`, `devinfo`) are filled by
+    /// `Merlin::driver_register`.
     pub const fn new(name: &'static str, kind: DeviceType) -> Self {
         Self {
             devh: 0,
