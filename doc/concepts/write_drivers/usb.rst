@@ -20,7 +20,7 @@ At this stage:
 - USB bus-level enums are defined in ``include/merlin/buses/usb.h``
   (``enum usb_maximum_speed`` and ``enum usb_otg_mode``);
 - concrete function sets are implementation-specific (for example
-  ``examples/usb/usbotgfs_driver.h``);
+   ``examples/c/usb/usbotgfs_driver.h``);
 - legacy callback-table documentation is obsolete and should not be used as a
    contract reference.
 

@@ -105,7 +105,7 @@ Reference implementation
 
 The STM32U5 sample implementation is provided in:
 
-- ``examples/can/stm32u5_fdcan_driver.c``
+- ``examples/c/can/stm32u5_fdcan_driver.c``
 
 It illustrates:
 
