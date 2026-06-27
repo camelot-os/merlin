@@ -1,4 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![deny(missing_docs)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 //! Rust implementation of Merlin runtime primitives.
 //!
@@ -10,6 +12,13 @@
 //! - IRQ dispatching to registered ISR callbacks
 //! - build-time generated DTS metadata
 //! - generic MMIO register helpers
+//!
+//! # Modules
+//!
+//! - [`dts`] exposes build-time generated metadata lookups.
+//! - [`io`] exposes typed MMIO helpers.
+//! - [`platform`] exposes the runtime registration and IRQ dispatch context.
+//! - [`types`] exposes the public data structures shared by all helpers.
 //!
 //! # Minimal usage
 //!
@@ -34,4 +43,5 @@ pub mod io;
 pub mod platform;
 pub mod types;
 
+/// Sentry status codes returned by Merlin runtime helpers.
 pub use sentry_uapi::systypes::Status;

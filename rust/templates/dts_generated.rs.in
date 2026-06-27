@@ -95,6 +95,7 @@ DevInfo {
 
 {% set ns = namespace(i2c_count=0, spi_count=0, usart_count=0, can_count=0, usb_count=0) -%}
 
+/// Generated I2C device metadata indexed by Merlin DTS label.
 pub static I2C_DEVICES: &[I2cDeviceInfo] = &[
 {% for device in dts.get_active_nodes() -%}
 {% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "I2C" in "%s"|format(device.label.upper()) -%}
@@ -146,6 +147,7 @@ pub static I2C_DEVICES: &[I2cDeviceInfo] = &[
 {% endfor -%}
 ];
 
+/// Generated SPI device metadata indexed by Merlin DTS label.
 pub static SPI_DEVICES: &[SpiDeviceInfo] = &[
 {% for device in dts.get_active_nodes() -%}
 {% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "SPI" in "%s"|format(device.label.upper()) -%}
@@ -158,6 +160,7 @@ pub static SPI_DEVICES: &[SpiDeviceInfo] = &[
 {% endfor -%}
 ];
 
+/// Generated USART device metadata indexed by Merlin DTS label.
 pub static USART_DEVICES: &[UsartDeviceInfo] = &[
 {% for device in dts.get_active_nodes() -%}
 {% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "USART" in "%s"|format(device.label.upper()) -%}
@@ -170,6 +173,7 @@ pub static USART_DEVICES: &[UsartDeviceInfo] = &[
 {% endfor -%}
 ];
 
+/// Generated CAN device metadata indexed by Merlin DTS label.
 pub static CAN_DEVICES: &[CanDeviceInfo] = &[
 {% for device in dts.get_active_nodes() -%}
 {% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "CAN" in "%s"|format(device.label.upper()) -%}
@@ -182,6 +186,7 @@ pub static CAN_DEVICES: &[CanDeviceInfo] = &[
 {% endfor -%}
 ];
 
+/// Generated USB device metadata indexed by Merlin DTS label.
 pub static USB_DEVICES: &[UsbDeviceInfo] = &[
 {% for device in dts.get_active_nodes() -%}
 {% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "USB" in "%s"|format(device.label.upper()) -%}

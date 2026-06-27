@@ -6,10 +6,15 @@ use std::process::Command;
 const FALLBACK_DTS_RS: &str = r"// Auto-generated fallback (no DTS provided)
 use crate::types::{CanDeviceInfo, I2cDeviceInfo, SpiDeviceInfo, UsbDeviceInfo, UsartDeviceInfo};
 
+/// Generated I2C device metadata indexed by Merlin DTS label.
 pub static I2C_DEVICES: &[I2cDeviceInfo] = &[];
+/// Generated SPI device metadata indexed by Merlin DTS label.
 pub static SPI_DEVICES: &[SpiDeviceInfo] = &[];
+/// Generated USART device metadata indexed by Merlin DTS label.
 pub static USART_DEVICES: &[UsartDeviceInfo] = &[];
+/// Generated CAN device metadata indexed by Merlin DTS label.
 pub static CAN_DEVICES: &[CanDeviceInfo] = &[];
+/// Generated USB device metadata indexed by Merlin DTS label.
 pub static USB_DEVICES: &[UsbDeviceInfo] = &[];
 ";
 
@@ -137,10 +142,7 @@ fn default_include_dirs() -> Vec<PathBuf> {
             .join("common"),
     ];
 
-    candidates
-        .into_iter()
-        .filter(|p| p.exists())
-        .collect()
+    candidates.into_iter().filter(|p| p.exists()).collect()
 }
 
 fn split_include_dirs(raw: &str) -> Vec<PathBuf> {

@@ -1,3 +1,8 @@
+//! Merlin runtime context and driver lifecycle helpers.
+//!
+//! The [`Merlin`] type stores the set of registered drivers, resolves static
+//! DTS metadata, and centralizes GPIO/IRQ related operations.
+
 use sentry_uapi::systypes::{DeviceHandle, Status};
 use sentry_uapi::{copy_from_kernel, syscall};
 
@@ -13,6 +18,14 @@ struct RegisteredDriver {
 ///
 /// The C implementation keeps a global list of registered drivers. This Rust
 /// implementation keeps that state in an explicit context object.
+///
+/// # Example
+///
+/// ```no_run
+/// use camelot_merlin::platform::Merlin;
+///
+/// let _merlin: Merlin<4> = Merlin::new();
+/// ```
 pub struct Merlin<const MAX_REGISTERED_DRIVERS: usize> {
     registered_drivers: [Option<RegisteredDriver>; MAX_REGISTERED_DRIVERS],
     num_registered_drivers: usize,
@@ -29,6 +42,14 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
     ///
     /// `MAX_REGISTERED_DRIVERS` defines the maximum number of drivers that can
     /// be registered in this context.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use camelot_merlin::platform::Merlin;
+    ///
+    /// let _merlin: Merlin<8> = Merlin::new();
+    /// ```
     pub const fn new() -> Self {
         Self {
             registered_drivers: [None; MAX_REGISTERED_DRIVERS],
@@ -45,6 +66,19 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
     /// - `Status::Ok` on success
     /// - `Status::Busy` when the runtime registration table is full
     /// - `Status::Invalid` when label lookup or handle retrieval fails
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use camelot_merlin::platform::Merlin;
+    /// use camelot_merlin::types::{DeviceType, PlatformDeviceDriver};
+    ///
+    /// let mut merlin: Merlin<4> = Merlin::new();
+    /// let mut driver = PlatformDeviceDriver::new("usart-demo", DeviceType::Usart);
+    /// let label = 0x4000_3800;
+    ///
+    /// let _status = merlin.driver_register(&mut driver, label);
+    /// ```
     pub fn driver_register(&mut self, driver: &mut PlatformDeviceDriver, label: u32) -> Status {
         if self.num_registered_drivers >= MAX_REGISTERED_DRIVERS {
             return Status::Busy;
@@ -71,11 +105,35 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
     }
 
     /// Maps the device memory region for a registered driver.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use camelot_merlin::platform::Merlin;
+    /// use camelot_merlin::types::{DeviceType, PlatformDeviceDriver};
+    ///
+    /// let merlin: Merlin<4> = Merlin::new();
+    /// let driver = PlatformDeviceDriver::new("usart-demo", DeviceType::Usart);
+    ///
+    /// let _status = merlin.driver_map(&driver);
+    /// ```
     pub fn driver_map(&self, driver: &PlatformDeviceDriver) -> Status {
         syscall::map_dev(driver.devh)
     }
 
     /// Unmaps the device memory region previously mapped for a driver.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use camelot_merlin::platform::Merlin;
+    /// use camelot_merlin::types::{DeviceType, PlatformDeviceDriver};
+    ///
+    /// let merlin: Merlin<4> = Merlin::new();
+    /// let driver = PlatformDeviceDriver::new("usart-demo", DeviceType::Usart);
+    ///
+    /// let _status = merlin.driver_unmap(&driver);
+    /// ```
     pub fn driver_unmap(&self, driver: &PlatformDeviceDriver) -> Status {
         syscall::unmap_dev(driver.devh)
     }
@@ -83,6 +141,18 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
     /// Configures GPIOs declared in the driver's DTS metadata.
     ///
     /// Returns `Status::NoEntity` if no metadata is attached to the driver.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use camelot_merlin::platform::Merlin;
+    /// use camelot_merlin::types::{DeviceType, PlatformDeviceDriver};
+    ///
+    /// let merlin: Merlin<4> = Merlin::new();
+    /// let driver = PlatformDeviceDriver::new("usart-demo", DeviceType::Usart);
+    ///
+    /// let _status = merlin.driver_configure_gpio(&driver);
+    /// ```
     pub fn driver_configure_gpio(&self, driver: &PlatformDeviceDriver) -> Status {
         let Some(devinfo) = driver.devinfo else {
             return Status::NoEntity;
@@ -106,6 +176,18 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
     /// Enables all interrupts declared in the driver's DTS metadata.
     ///
     /// Returns `Status::NoEntity` when no IRQ is available for that device.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use camelot_merlin::platform::Merlin;
+    /// use camelot_merlin::types::{DeviceType, PlatformDeviceDriver};
+    ///
+    /// let merlin: Merlin<4> = Merlin::new();
+    /// let driver = PlatformDeviceDriver::new("usart-demo", DeviceType::Usart);
+    ///
+    /// let _status = merlin.driver_enable_irqs(&driver);
+    /// ```
     pub fn driver_enable_irqs(&self, driver: &PlatformDeviceDriver) -> Status {
         let Some(devinfo) = driver.devinfo else {
             return Status::NoEntity;
@@ -131,6 +213,18 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
     /// Disables all interrupts declared in the driver's DTS metadata.
     ///
     /// Returns `Status::NoEntity` when no IRQ is available for that device.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use camelot_merlin::platform::Merlin;
+    /// use camelot_merlin::types::{DeviceType, PlatformDeviceDriver};
+    ///
+    /// let merlin: Merlin<4> = Merlin::new();
+    /// let driver = PlatformDeviceDriver::new("usart-demo", DeviceType::Usart);
+    ///
+    /// let _status = merlin.driver_disable_irqs(&driver);
+    /// ```
     pub fn driver_disable_irqs(&self, driver: &PlatformDeviceDriver) -> Status {
         let Some(devinfo) = driver.devinfo else {
             return Status::NoEntity;
@@ -157,6 +251,18 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
     ///
     /// Valid for I2C/SPI/USART/CAN. Returns `Status::Invalid` for unsupported
     /// kinds or unknown labels.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use camelot_merlin::platform::Merlin;
+    /// use camelot_merlin::types::{DeviceType, PlatformDeviceDriver};
+    ///
+    /// let merlin: Merlin<4> = Merlin::new();
+    /// let driver = PlatformDeviceDriver::new("spi-demo", DeviceType::Spi);
+    ///
+    /// let _clock_mhz = merlin.driver_get_bus_clock(&driver);
+    /// ```
     pub fn driver_get_bus_clock(&self, driver: &PlatformDeviceDriver) -> Result<u32, Status> {
         match driver.kind {
             DeviceType::I2c | DeviceType::Spi | DeviceType::Usart | DeviceType::Can => {
@@ -170,6 +276,15 @@ impl<const MAX_REGISTERED_DRIVERS: usize> Merlin<MAX_REGISTERED_DRIVERS> {
     ///
     /// If an ISR callback is installed, it is called before IRQ acknowledge and
     /// re-enable operations.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use camelot_merlin::platform::Merlin;
+    ///
+    /// let mut merlin: Merlin<4> = Merlin::new();
+    /// let _status = merlin.irq_dispatch(42);
+    /// ```
     pub fn irq_dispatch(&mut self, irqn: u32) -> Status {
         let Some(driver) = self.find_driver_from_irq(irqn) else {
             return Status::Invalid;
