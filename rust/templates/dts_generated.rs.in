@@ -1,0 +1,195 @@
+// Auto-generated from DeviceTree by dts2src.
+use crate::types::{
+    CanDeviceInfo, DevInfo, DevIo, I2cDeviceInfo, ItInfo, SpiDeviceInfo, UsbDeviceInfo,
+    UsartDeviceInfo,
+};
+
+{% macro seq_get(value, index, default=0) -%}
+{%- if value is number -%}
+{{- value if index == 0 else default -}}
+{%- elif value and (value|length > index) -%}
+{{- value[index] -}}
+{%- else -%}
+{{- default -}}
+{%- endif -%}
+{% endmacro -%}
+
+{% macro io_at(device, idx) -%}
+{% if device['pinctrl-0'] and idx < (device['pinctrl-0']|length) -%}
+{% set iodata = device['pinctrl-0'][idx] -%}
+DevIo {
+    port: 0,
+    pin: {{ seq_get(iodata.pinmux, 1) }}u32,
+    mode: {{ seq_get(iodata.pinmux, 2) }}u32,
+    af: {{ seq_get(iodata.pinmux, 3) }}u32,
+    ppull: {{ seq_get(iodata.pincfg, 0) }}u32,
+    speed: {{ seq_get(iodata.pincfg, 1) }}u32,
+    pupdr: {{ seq_get(iodata.pincfg, 2) }}u32,
+}
+{% else -%}
+DevIo { port: 0, pin: 0, mode: 0, af: 0, ppull: 0, speed: 0, pupdr: 0 }
+{% endif -%}
+{% endmacro -%}
+
+{% macro irq_at(device, idx) -%}
+{% if device.interrupts and idx == 0 and seq_get(device.interrupts, 0, 0) -%}
+ItInfo {
+    it_controller: {{ seq_get(device.interrupts, 1, 0) }}u32,
+    it_num: {{ seq_get(device.interrupts, 0, 0) }}u32,
+}
+{% else -%}
+ItInfo { it_controller: 0, it_num: 0 }
+{% endif -%}
+{% endmacro -%}
+
+{% macro devinfo(device) -%}
+DevInfo {
+    id: {{ (device['sentry,label'] if device['sentry,label'] else 0)|int }}u32,
+    {% if device.reg -%}
+    baseaddr: {{ seq_get(device.reg, 0, 0)|int }}usize,
+    size: {{ seq_get(device.reg, 1, 0)|int }}usize,
+    {% else -%}
+    baseaddr: 0usize,
+    size: 0usize,
+    {% endif -%}
+    num_interrupt: {{ 1 if device.interrupts and seq_get(device.interrupts, 0, 0) else 0 }}usize,
+    its: [
+        {{ irq_at(device, 0) }},
+        {{ irq_at(device, 1) }},
+        {{ irq_at(device, 2) }},
+        {{ irq_at(device, 3) }},
+        {{ irq_at(device, 4) }},
+        {{ irq_at(device, 5) }},
+        {{ irq_at(device, 6) }},
+        {{ irq_at(device, 7) }},
+    ],
+    {% set numio = (device['pinctrl-0']|length) if device['pinctrl-0'] else 0 -%}
+    num_ios: {{ numio|int }}usize,
+    ios: [
+        {{ io_at(device, 0) }},
+        {{ io_at(device, 1) }},
+        {{ io_at(device, 2) }},
+        {{ io_at(device, 3) }},
+        {{ io_at(device, 4) }},
+        {{ io_at(device, 5) }},
+        {{ io_at(device, 6) }},
+        {{ io_at(device, 7) }},
+    ],
+}
+{% endmacro -%}
+
+{% macro usb_speed(device) -%}
+{% set speed = "%s"|format(device["maximum-speed"] if device["maximum-speed"] else "")|lower -%}
+{% if speed == "low-speed" -%}
+0
+{% elif speed == "full-speed" -%}
+1
+{% elif speed == "high-speed" -%}
+2
+{% elif speed == "super-speed" -%}
+3
+{% else -%}
+4
+{% endif -%}
+{% endmacro -%}
+
+{% set ns = namespace(i2c_count=0, spi_count=0, usart_count=0, can_count=0, usb_count=0) -%}
+
+pub static I2C_DEVICES: &[I2cDeviceInfo] = &[
+{% for device in dts.get_active_nodes() -%}
+{% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "I2C" in "%s"|format(device.label.upper()) -%}
+    I2cDeviceInfo {
+        devinfo: {{ devinfo(device) }},
+        child_devinfo: [
+            {% set ns_child = namespace(n=0) -%}
+            {% for child in device|peripherals|enabled -%}
+            {% if child is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and ns_child.n < 4 -%}
+            {{ devinfo(child) }},
+            {% set ns_child.n = ns_child.n + 1 -%}
+            {% endif -%}
+            {% endfor -%}
+            {% for _ in range(4 - ns_child.n) -%}
+            DevInfo {
+                id: 0,
+                baseaddr: 0,
+                size: 0,
+                num_interrupt: 0,
+                its: [
+                    ItInfo { it_controller: 0, it_num: 0 },
+                    ItInfo { it_controller: 0, it_num: 0 },
+                    ItInfo { it_controller: 0, it_num: 0 },
+                    ItInfo { it_controller: 0, it_num: 0 },
+                    ItInfo { it_controller: 0, it_num: 0 },
+                    ItInfo { it_controller: 0, it_num: 0 },
+                    ItInfo { it_controller: 0, it_num: 0 },
+                    ItInfo { it_controller: 0, it_num: 0 },
+                ],
+                num_ios: 0,
+                ios: [
+                    DevIo { port: 0, pin: 0, mode: 0, af: 0, ppull: 0, speed: 0, pupdr: 0 },
+                    DevIo { port: 0, pin: 0, mode: 0, af: 0, ppull: 0, speed: 0, pupdr: 0 },
+                    DevIo { port: 0, pin: 0, mode: 0, af: 0, ppull: 0, speed: 0, pupdr: 0 },
+                    DevIo { port: 0, pin: 0, mode: 0, af: 0, ppull: 0, speed: 0, pupdr: 0 },
+                    DevIo { port: 0, pin: 0, mode: 0, af: 0, ppull: 0, speed: 0, pupdr: 0 },
+                    DevIo { port: 0, pin: 0, mode: 0, af: 0, ppull: 0, speed: 0, pupdr: 0 },
+                    DevIo { port: 0, pin: 0, mode: 0, af: 0, ppull: 0, speed: 0, pupdr: 0 },
+                    DevIo { port: 0, pin: 0, mode: 0, af: 0, ppull: 0, speed: 0, pupdr: 0 },
+                ],
+            },
+            {% endfor -%}
+        ],
+        num_child_devices: {{ ns_child.n|int }}u32,
+        bus_input_clock_freq: {{ seq_get(device['i2c,peripheral-clock'], 0, 0)|int }}u32,
+    },
+{% set ns.i2c_count = ns.i2c_count + 1 -%}
+{% endif -%}
+{% endfor -%}
+];
+
+pub static SPI_DEVICES: &[SpiDeviceInfo] = &[
+{% for device in dts.get_active_nodes() -%}
+{% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "SPI" in "%s"|format(device.label.upper()) -%}
+    SpiDeviceInfo {
+        devinfo: {{ devinfo(device) }},
+        bus_input_clock_freq: {{ seq_get(device['spi,peripheral-clock'], 0, 0)|int }}u32,
+    },
+{% set ns.spi_count = ns.spi_count + 1 -%}
+{% endif -%}
+{% endfor -%}
+];
+
+pub static USART_DEVICES: &[UsartDeviceInfo] = &[
+{% for device in dts.get_active_nodes() -%}
+{% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "USART" in "%s"|format(device.label.upper()) -%}
+    UsartDeviceInfo {
+        devinfo: {{ devinfo(device) }},
+        bus_input_clock_freq: {{ seq_get(device['usart,peripheral-clock'], 0, 0)|int }}u32,
+    },
+{% set ns.usart_count = ns.usart_count + 1 -%}
+{% endif -%}
+{% endfor -%}
+];
+
+pub static CAN_DEVICES: &[CanDeviceInfo] = &[
+{% for device in dts.get_active_nodes() -%}
+{% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "CAN" in "%s"|format(device.label.upper()) -%}
+    CanDeviceInfo {
+        devinfo: {{ devinfo(device) }},
+        bus_input_clock_freq: {{ seq_get(device['can,peripheral-clock'], 0, 0)|int }}u32,
+    },
+{% set ns.can_count = ns.can_count + 1 -%}
+{% endif -%}
+{% endfor -%}
+];
+
+pub static USB_DEVICES: &[UsbDeviceInfo] = &[
+{% for device in dts.get_active_nodes() -%}
+{% if device is owned and device is enabled and device is owned_by(env.CONFIG_TASK_LABEL|int(base=16)) and "USB" in "%s"|format(device.label.upper()) -%}
+    UsbDeviceInfo {
+        devinfo: {{ devinfo(device) }},
+        maximum_speed: {{ usb_speed(device)|int }}u32,
+    },
+{% set ns.usb_count = ns.usb_count + 1 -%}
+{% endif -%}
+{% endfor -%}
+];

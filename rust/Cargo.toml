@@ -1,0 +1,20 @@
+[package]
+name = "camelot-merlin"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Rust implementation of Camelot Merlin platform runtime"
+repository = "https://github.com/camelot-os/merlin"
+readme = "README.md"
+keywords = ["camelot", "merlin", "embedded", "no-std", "sentry"]
+categories = ["embedded", "no-std"]
+
+[dependencies]
+sentry-uapi = { version = "0.4.8", default-features = false }
+
+[features]
+default = []
+std = ["sentry-uapi/std"]
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
