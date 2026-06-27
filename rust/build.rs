@@ -1,5 +1,4 @@
 use std::env;
-use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -108,15 +107,15 @@ fn preprocess_dts(dts: &Path, out_dir: &Path) -> Option<PathBuf> {
     if status.success() { Some(output) } else { None }
 }
 
-fn collect_include_dirs() -> Vec<OsString> {
-    let mut include_paths: Vec<OsString> = default_include_dirs();
+fn collect_include_dirs() -> Vec<PathBuf> {
+    let mut include_paths = default_include_dirs();
     if let Ok(raw) = env::var("MERLIN_DTS_INCLUDE_DIRS") {
         include_paths.extend(split_include_dirs(&raw));
     }
     include_paths
 }
 
-fn default_include_dirs() -> Vec<OsString> {
+fn default_include_dirs() -> Vec<PathBuf> {
     let manifest_dir = PathBuf::from(
         env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR must be set by Cargo"),
     );
@@ -141,16 +140,15 @@ fn default_include_dirs() -> Vec<OsString> {
     candidates
         .into_iter()
         .filter(|p| p.exists())
-        .map(PathBuf::into_os_string)
         .collect()
 }
 
-fn split_include_dirs(raw: &str) -> Vec<OsString> {
+fn split_include_dirs(raw: &str) -> Vec<PathBuf> {
     let sep = if cfg!(windows) { ';' } else { ':' };
     raw.split(sep)
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .map(OsString::from)
+        .map(PathBuf::from)
         .collect()
 }
 

@@ -2,8 +2,8 @@
 
 //! Rust implementation of Merlin runtime primitives.
 //!
-//! This crate provides a no-std, `sentry-uapi`-based equivalent of Merlin C
-//! platform primitives, including:
+//! This crate provides no-std, `sentry-uapi`-based Merlin platform primitives,
+//! including:
 //!
 //! - device registration from DTS labels
 //! - map/unmap and GPIO/IRQ helpers

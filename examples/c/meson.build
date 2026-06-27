@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 H2Lab Development Team
 
-subdir('c')
-
-if get_option('with_rust')
-	subdir('rust')
-endif
+subdir('i2c')
+subdir('spi')
+subdir('usb')
+subdir('usart')
+subdir('can')

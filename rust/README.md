@@ -1,6 +1,6 @@
 # camelot-merlin
 
-Rust implementation of Merlin platform runtime, aligned with the C implementation model:
+Rust implementation of Merlin platform runtime:
 
 - registration by DTS label
 - device handle retrieval through Sentry UAPI
@@ -12,6 +12,7 @@ Rust implementation of Merlin platform runtime, aligned with the C implementatio
 ## Dependency policy
 
 This crate depends only on `sentry-uapi = 0.4.8`.
+It uses Rust UAPI modules (`systypes`, `syscall`, `copy_from_kernel`) and must not use `sentry_uapi::ffi_c`.
 
 ## DTS generation
 

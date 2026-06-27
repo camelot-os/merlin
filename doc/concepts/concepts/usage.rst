@@ -104,7 +104,7 @@ directly manipulating bus-controller registers.
 Per-family notes from reference implementations
 ------------------------------------------------
 
-I2C (``examples/i2c/i2c_bus_driver``)
+I2C (``examples/c/i2c/i2c_bus_driver``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - validates addressing mode before each transfer path (7-bit vs 10-bit);
@@ -112,7 +112,7 @@ I2C (``examples/i2c/i2c_bus_driver``)
 - aborts in-flight transfer on failure and clears sticky flags;
 - returns retry-oriented status for transient bus busy conditions.
 
-SPI (``examples/spi/spi_bus_driver.c``)
+SPI (``examples/c/spi/spi_bus_driver.c``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - uses ``spi_config`` as canonical input contract;
@@ -122,7 +122,7 @@ SPI (``examples/spi/spi_bus_driver.c``)
 - supports full-duplex and simplex transfer combinations with strict argument
   validation.
 
-USART (``examples/usart/stm32_usart_driver.c``)
+USART (``examples/c/usart/stm32_usart_driver.c``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - uses per-label instance slots to support multiple controllers;
@@ -131,7 +131,7 @@ USART (``examples/usart/stm32_usart_driver.c``)
 - ISR entry resolves instance from the ``platform_device_driver`` pointer passed
   by Merlin.
 
-CAN (``examples/can/stm32u5_fdcan_driver.c``)
+CAN (``examples/c/can/stm32u5_fdcan_driver.c``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - uses ``struct can_config`` and ``struct can_frame`` as stable contracts;
@@ -140,7 +140,7 @@ CAN (``examples/can/stm32u5_fdcan_driver.c``)
 - separates init-mode controller programming from runtime TX/RX operations;
 - returns retry-oriented status when TX FIFO/RX FIFO conditions are transient.
 
-USB OTG FS (``examples/usb/usbotgfs_driver.c``)
+USB OTG FS (``examples/c/usb/usbotgfs_driver.c``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - keeps endpoint runtime state in dedicated tables;

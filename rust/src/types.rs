@@ -1,4 +1,4 @@
-use core::ffi::c_void;
+use core::ptr::NonNull;
 
 use sentry_uapi::systypes::DeviceHandle;
 
@@ -7,7 +7,6 @@ pub const MAX_IOS: usize = 8;
 pub const MAX_I2C_CHILDREN: usize = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
 pub enum DeviceType {
     I2c = 1,
     Spi = 2,
@@ -18,14 +17,12 @@ pub enum DeviceType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(C)]
 pub struct ItInfo {
     pub it_controller: u32,
     pub it_num: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(C)]
 pub struct DevIo {
     pub port: u32,
     pub pin: u32,
@@ -37,7 +34,6 @@ pub struct DevIo {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
 pub struct DevInfo {
     pub id: u32,
     pub baseaddr: usize,
@@ -72,7 +68,6 @@ impl DevInfo {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
 pub enum UsbMaximumSpeed {
     LowSpeed = 0,
     FullSpeed = 1,
@@ -94,7 +89,6 @@ impl From<u32> for UsbMaximumSpeed {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
 pub struct I2cDeviceInfo {
     pub devinfo: DevInfo,
     pub child_devinfo: [DevInfo; MAX_I2C_CHILDREN],
@@ -103,28 +97,24 @@ pub struct I2cDeviceInfo {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
 pub struct SpiDeviceInfo {
     pub devinfo: DevInfo,
     pub bus_input_clock_freq: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
 pub struct UsartDeviceInfo {
     pub devinfo: DevInfo,
     pub bus_input_clock_freq: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
 pub struct CanDeviceInfo {
     pub devinfo: DevInfo,
     pub bus_input_clock_freq: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
 pub struct UsbDeviceInfo {
     pub devinfo: DevInfo,
     pub maximum_speed: u32,
@@ -133,32 +123,28 @@ pub struct UsbDeviceInfo {
 pub type PlatformIsrFn = fn(&mut PlatformDeviceDriver, u32) -> i32;
 
 #[derive(Debug, Clone, Copy, Default)]
-#[repr(C)]
 pub struct PlatformFops {
     pub isr: Option<PlatformIsrFn>,
 }
 
 #[derive(Debug)]
-#[repr(C)]
 pub struct PlatformDeviceDriver {
     pub devh: DeviceHandle,
     pub label: u32,
     pub devinfo: Option<&'static DevInfo>,
     pub name: &'static str,
-    pub compatible: &'static str,
     pub platform_fops: PlatformFops,
     pub kind: DeviceType,
-    pub private_data: Option<*mut c_void>,
+    pub private_data: Option<NonNull<()>>,
 }
 
 impl PlatformDeviceDriver {
-    pub const fn new(name: &'static str, compatible: &'static str, kind: DeviceType) -> Self {
+    pub const fn new(name: &'static str, kind: DeviceType) -> Self {
         Self {
             devh: 0,
             label: 0,
             devinfo: None,
             name,
-            compatible,
             platform_fops: PlatformFops { isr: None },
             kind,
             private_data: None,
